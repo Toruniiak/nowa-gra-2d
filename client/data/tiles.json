@@ -1,0 +1,31 @@
+{
+  "_doc": "Tile/object definitions shared by server (reads only 'walkable') and client (reads graphics). Every sprite is drawn with its bottom-centre on the tile's bottom-centre. See docs/ASSET_PIPELINE.md.",
+  "tile_size": 32,
+  "sheets": {
+    "terrain": { "path": "res://assets/tilesets/terrain.png", "cell": [32, 32] },
+    "walls":   { "path": "res://assets/tilesets/walls.png",   "cell": [32, 48] },
+    "objects": { "path": "res://assets/tilesets/objects.png", "cell": [64, 64] }
+  },
+  "ground": {
+    "grass":         { "sheet": "terrain", "cell": [0, 0], "walkable": true },
+    "grass_b":       { "sheet": "terrain", "cell": [1, 0], "walkable": true },
+    "grass_flowers": { "sheet": "terrain", "cell": [2, 0], "walkable": true },
+    "grass_dark":    { "sheet": "terrain", "cell": [3, 0], "walkable": true },
+    "dirt":          { "sheet": "terrain", "cell": [4, 0], "walkable": true },
+    "sand":          { "sheet": "terrain", "cell": [5, 0], "walkable": true },
+    "water":         { "sheet": "terrain", "frames": [[0, 1], [1, 1], [2, 1]], "fps": 3, "walkable": false },
+    "wood_floor":    { "sheet": "terrain", "cell": [6, 0], "walkable": true },
+    "stone_floor":   { "sheet": "terrain", "cell": [7, 0], "walkable": true },
+    "dungeon_floor": { "sheet": "terrain", "cell": [3, 1], "walkable": true }
+  },
+  "objects": {
+    "wall":         { "sheet": "walls",   "autotile": { "top": [0, 0], "front": [1, 0] }, "walkable": false },
+    "dungeon_wall": { "sheet": "walls",   "autotile": { "top": [2, 0], "front": [3, 0] }, "walkable": false },
+    "tree":         { "sheet": "objects", "cell": [0, 0], "walkable": false },
+    "tree_b":       { "sheet": "objects", "cell": [1, 0], "walkable": false },
+    "bush":         { "sheet": "objects", "cell": [2, 0], "walkable": false },
+    "rock":         { "sheet": "objects", "cell": [3, 0], "walkable": false },
+    "flowers":      { "sheet": "objects", "cell": [4, 0], "walkable": true },
+    "chest":        { "sheet": "objects", "cell": [5, 0], "walkable": false }
+  }
+}

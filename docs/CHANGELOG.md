@@ -141,3 +141,25 @@
 - Przeanalizowano darmowe źródła grafik (Pipoya, Summer Engine, LPC,
   kolekcje itch.io) pod kątem stylu i licencji — wybór czeka na decyzję
   użytkownika, żadne zasoby nie zostały jeszcze dodane do repo.
+
+## 2026-09-26 (7) — Phase 5 (część 1): mapa i ruch po kratkach
+
+- **Grafika:** `tools/art/gen_tileset.py` rysuje od zera kafle 32×32 (trawa ×3,
+  ziemia, piasek, animowana woda, podłogi, ściany jasne/ciemne z autotilem),
+  obiekty (2 drzewa, krzak, kamień, kwiaty, skrzynia) i postacie w 4
+  kierunkach z animacją chodu. Styl i palety wg wzoru wskazanego przez
+  użytkownika — CC0 "Tibia-style RPG Tileset" (Summer Engine); sam wzór to
+  jeden obraz AI 1408×768 bez siatki, więc nie nadawał się do gry wprost.
+- **Dane wspólne:** `client/data/tiles.json` + `client/data/maps/start.json`
+  (40×30) — klient bierze grafikę, serwer tylko `walkable`.
+- **Serwer:** `GameMap` (walidacja mapy przy starcie), `World` na kaflach,
+  komenda `STEP` zamiast `MOVE`, `POS` z kierunkiem, `WELCOME` z czasem
+  kroku. Kolejka jednego kroku — przy okazji zamyka znany problem "brak
+  limitu MOVE na tick". Nowa zależność: nlohmann/json.
+- **Klient:** `game_map.gd` (TileMapLayer + obiekty sortowane po Y),
+  `player_entity.gd` (płynny krok + animacja), `world.gd` (kamera, sterowanie
+  4-kierunkowe), filtr "nearest" dla pixel artu.
+- **Testy:** zaktualizowany `tools/test_client.py`, nowy
+  `tools/godot_walk_test.gd`; regresja logowania/reconnectu przechodzi.
+- **Znalezione przy okazji:** ponownie `pkill`/`pgrep -f` dopasowywał się do
+  własnej powłoki (ubijanie i start serwera w jednym poleceniu) — rozdzielone.

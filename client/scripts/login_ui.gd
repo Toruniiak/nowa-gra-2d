@@ -246,6 +246,6 @@ func _on_enter_pressed() -> void:
 	_net.send_character_select(_char_list.get_item_metadata(selected[0]))
 
 
-func _on_entered_world(_local_entity_id: int) -> void:
+func _on_entered_world(_local_entity_id: int, _step_duration: float) -> void:
 	_auto = {}
 	visible = false

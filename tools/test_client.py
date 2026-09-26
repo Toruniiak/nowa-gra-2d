@@ -7,7 +7,8 @@ without needing a graphical Godot client. Usage:
 cert_path (default server/certs/server.crt) is pinned: the connection is
 verified against it, exactly like the Godot client does.
 
-Covers: TLS handshake, register/login (incl. rejected duplicate username and
+Covers: TLS handshake, grid movement (step duration, map walkability,
+players blocking tiles, step-spam speed limit), register/login (incl. rejected duplicate username and
 wrong password), character create/select, movement + anti-cheat clamping,
 malformed input, disconnect/reconnect with persisted position, world
 snapshot on join, and the negative/security cases: a character cannot be
@@ -17,6 +18,7 @@ rate-limited and repeated failures disconnect, oversized lines disconnect,
 plaintext (non-TLS) clients are rejected, and — if db_path is given — no
 plaintext password is stored in the database.
 """
+import json
 import select
 import socket
 import sqlite3
@@ -26,6 +28,20 @@ import time
 import uuid
 
 port = int(sys.argv[1]) if len(sys.argv) > 1 else 7777
+
+# Same data files the server loads — the test checks the server obeys them.
+with open("client/data/tiles.json") as f:
+    TILES = json.load(f)
+with open("client/data/maps/start.json") as f:
+    MAP = json.load(f)
+
+
+def walkable(x, y):
+    if not (0 <= x < MAP["width"] and 0 <= y < MAP["height"]):
+        return False
+    g = MAP["legend"]["ground"][MAP["ground"][y][x]]
+    o = MAP["legend"]["objects"][MAP["objects"][y][x]]
+    return TILES["ground"][g]["walkable"] and (o is None or TILES["objects"][o]["walkable"])
 db_path = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] else None
 cert_path = sys.argv[3] if len(sys.argv) > 3 else "server/certs/server.crt"
 
@@ -140,7 +156,7 @@ b.close()
 
 # --- Commands before login are ignored (no reply, no world entry) ---
 pre = connect()
-pre.sendall(b"MOVE 5 5\nCHAR_LIST\nCHAR_SELECT 1\n")
+pre.sendall(b"STEP N\nCHAR_LIST\nCHAR_SELECT 1\n")
 check("commands before login ignored", recv_lines(pre) == [], "no reply")
 pre.close()
 
@@ -194,18 +210,23 @@ expect("A cannot select B's character", recv_lines(a), "CHAR_SELECT_FAIL")
 a.sendall(f"CHAR_SELECT {char_a_id}\n".encode())
 welcome_a = recv_lines(a)
 expect("A char select", welcome_a, "WELCOME")
-entity_a = next(l for l in welcome_a if l.startswith("WELCOME")).split()[1]
+welcome_line = next(l for l in welcome_a if l.startswith("WELCOME")).split()
+entity_a = welcome_line[1]
+check("WELCOME carries step duration", len(welcome_line) == 3 and welcome_line[2].isdigit(), welcome_line)
+step_s = int(welcome_line[2]) / 1000.0
+sx, sy = MAP["spawn"]
+expect("new character appears at map spawn", welcome_a, f"POS {entity_a} {sx} {sy} ")
 
 # B is logged in but hasn't selected a character: it must NOT see world state.
-a.sendall(b"MOVE 1 0\n")
-time.sleep(0.15)
+a.sendall(b"STEP E\n")
+time.sleep(step_s + 0.05)
 recv_lines(a)
 expect_none("logged-in but not playing: no world state", recv_lines(b), "POS")
 
 # Unauthenticated observer (TLS only, no login) must not see world state either.
 spy = connect()
-a.sendall(b"MOVE 2 0\n")
-time.sleep(0.15)
+a.sendall(b"STEP E\n")
+time.sleep(step_s + 0.05)
 expect_none("unauthenticated observer: no world state", recv_lines(spy), "POS")
 spy.close()
 
@@ -213,39 +234,63 @@ b.sendall(f"CHAR_SELECT {char_b_id}\n".encode())
 welcome_b = recv_lines(b)
 expect("B char select", welcome_b, "WELCOME")
 entity_b = next(l for l in welcome_b if l.startswith("WELCOME")).split()[1]
-# A is standing still at (3, 0): B must learn about it from the join snapshot.
-expect("B join snapshot includes idle A", welcome_b, f"POS {entity_a} 3")
+# A stepped E twice and is standing still: B learns about it from the snapshot.
+expect("B join snapshot includes idle A", welcome_b, f"POS {entity_a} {sx + 2} {sy} E")
+expect("B takes the (now free) spawn tile", welcome_b, f"POS {entity_b} {sx} {sy} ")
 
-# --- Movement + anti-cheat (same assertions as before TLS/accounts existed) ---
+# --- Grid movement rules ---
 recv_lines(a)
-a.sendall(b"MOVE 3 0\n")
-time.sleep(0.15)
-expect("normal move seen by B", recv_lines(b), f"POS {entity_a} 6")
+a.sendall(b"STEP W\n")
+time.sleep(step_s + 0.05)
+expect("normal step seen by B", recv_lines(b), f"POS {entity_a} {sx + 1} {sy} W")
+a.sendall(b"STEP W\n")  # B stands on the spawn tile -> blocked
+time.sleep(step_s + 0.05)
+expect_none("players block each other's tile", recv_lines(b), f"POS {entity_a} {sx} ")
 
-a.sendall(b"MOVE 500 0\n")
-time.sleep(0.15)
-expect("cheat move (500,0) clamped to +6", recv_lines(b), f"POS {entity_a} 12")
+# Speed hack: a burst of 10 steps may move at most 2 tiles in ~1.5 step times
+# (one now + ONE queued, the rest are dropped — see World::queueStep).
+recv_lines(a)
+a.sendall(b"STEP E\n" * 10)
+time.sleep(step_s * 1.5)
+xs = [int(l.split()[2]) for l in recv_lines(b) if l.startswith(f"POS {entity_a} ")]
+check("burst of 10 STEPs moves at most 2 tiles", xs and max(xs) <= sx + 3, xs)
+time.sleep(step_s * 3)
+recv_lines(b)
+ax = sx + 3
+ay = sy
 
-a.sendall(b"GARBAGE not a real command\n")
+# Walk north until something stops us; the tile beyond must be blocked
+# according to the same map files the server loads.
+for _ in range(MAP["height"]):
+    a.sendall(b"STEP N\n")
+    time.sleep(step_s + 0.05)
+    moved = [l for l in recv_lines(b) if l.startswith(f"POS {entity_a} {ax} {ay - 1} ")]
+    if not moved:
+        break
+    ay -= 1
+check("walking north stopped by the map, not earlier",
+      not walkable(ax, ay - 1), f"stopped at ({ax}, {ay}); north tile walkable={walkable(ax, ay - 1)}")
+
+a.sendall(b"STEP X\nSTEP\nGARBAGE not a real command\n")
 time.sleep(0.15)
-a.sendall(b"MOVE 0 1\n")
-time.sleep(0.15)
-expect("A still alive after malformed input", recv_lines(b), f"POS {entity_a} 12")
+a.sendall(b"STEP S\n")
+time.sleep(step_s + 0.05)
+ay += 1
+expect("A still alive after malformed input", recv_lines(b), f"POS {entity_a} {ax} {ay} S")
 
 a.close()
 time.sleep(0.15)
 expect("B sees A leave", recv_lines(b), f"LEAVE {entity_a}")
 
-# --- Reconnect: position persisted, and idle B visible via snapshot ---
+# --- Reconnect: tile position persisted, and idle B visible via snapshot ---
 a2 = connect()
 a2.sendall(f"LOGIN {user_a} {password}\n".encode())
 expect("A reconnect login", recv_lines(a2), "AUTH_OK")
 a2.sendall(f"CHAR_SELECT {char_a_id}\n".encode())
 reconnect_lines = recv_lines(a2)
 expect("A reconnect char select", reconnect_lines, "WELCOME")
-# 0,0 -> +1 -> +2 -> +3 -> clamped +6 -> +(0,1) = (12, 1)
-expect("A reconnect position persisted at (12, 1)", reconnect_lines, " 12.000000 1.000000")
-expect("A reconnect snapshot includes idle B", reconnect_lines, f"POS {entity_b} 0")
+expect(f"A reconnect position persisted at ({ax}, {ay})", reconnect_lines, f" {ax} {ay} ")
+expect("A reconnect snapshot includes idle B", reconnect_lines, f"POS {entity_b} {sx} {sy} ")
 a2.close()
 b.close()
 

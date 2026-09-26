@@ -15,10 +15,10 @@
 ```
 TLS handshake ──► NIEZALOGOWANY ──REGISTER/LOGIN ok──► ZALOGOWANY ──CHAR_SELECT ok──► W ŚWIECIE
                     │  (60 s na zalogowanie,                │                            │
-                    │   inaczej rozłączenie)                 │ CHAR_LIST / CHAR_CREATE    │ MOVE
+                    │   inaczej rozłączenie)                 │ CHAR_LIST / CHAR_CREATE    │ STEP
 ```
 
-Każdy handler sam sprawdza stan — komenda spoza swojego stanu (np. `MOVE`
+Każdy handler sam sprawdza stan — komenda spoza swojego stanu (np. `STEP`
 przed wyborem postaci, `CHAR_LIST` przed logowaniem) jest **ignorowana bez
 odpowiedzi**, nie powoduje błędu. Zmiana postaci = nowe połączenie.
 
@@ -31,7 +31,7 @@ odpowiedzi**, nie powoduje błędu. Zmiana postaci = nowe połączenie.
 | `CHAR_LIST` | zalogowany | |
 | `CHAR_CREATE <nazwa>` | zalogowany | 3-20 znaków, litery/cyfry/spacje (nie na brzegach); nazwy globalnie unikalne |
 | `CHAR_SELECT <id>` | zalogowany | serwer sprawdza, że postać należy do konta |
-| `MOVE <dx> <dy>` | w świecie | intencja; serwer przycina do `kMaxMovePerTick` (6.0) |
+| `STEP <N\|E\|S\|W>` | w świecie | intencja kroku o 1 kafel. Serwer trzyma **najwyżej jeden** oczekujący krok (kolejne go zastępują) i wykonuje go, gdy minie czas poprzedniego kroku, cel jest przechodni wg mapy i nie stoi na nim inna postać. Wejście w przeszkodę tylko obraca postać. |
 
 ## Komendy serwer → klient
 
@@ -42,8 +42,8 @@ odpowiedzi**, nie powoduje błędu. Zmiana postaci = nowe połączenie.
 | `CHARS <id>:<nazwa> ...` | lista postaci konta (pusta = samo `CHARS`). Nazwy mogą mieć spacje, ale nigdy `:` — klient skleja tokeny bez prefiksu `<id>:` z poprzednią nazwą. |
 | `CHAR_CREATED <id> <nazwa>` / `CHAR_CREATE_FAIL <powód>` | `invalid_name`, `name_taken` |
 | `CHAR_SELECT_FAIL <powód>` | `invalid_id`, `not_found` (to samo dla "nie istnieje" i "cudza postać") |
-| `WELCOME <entity_id>` | wejście do świata; zaraz po nim snapshot `POS` wszystkich obecnych encji |
-| `POS <entity_id> <x> <y>` | pozycja encji (co tick, gdy się zmieniła) |
+| `WELCOME <entity_id> <step_ms>` | wejście do świata + czas jednego kroku (dziś 250 ms, klient animuje krok w tym czasie); zaraz po nim snapshot `POS` wszystkich obecnych encji |
+| `POS <entity_id> <x> <y> <N\|E\|S\|W>` | kafel (liczby całkowite) i kierunek, w który patrzy postać; wysyłane, gdy się zmieniły |
 | `LEAVE <entity_id>` | encja opuściła świat |
 
 `POS`/`LEAVE` trafiają **wyłącznie do połączeń w świecie** — nie do
@@ -66,6 +66,15 @@ niezalogowanych ani zalogowanych bez wybranej postaci (inaczej każdy mógłby
   (klient, który nie czyta, jest rozłączany), 60 s na zalogowanie, deskryptory
   ≥ `FD_SETSIZE` odrzucane (ograniczenie `select()`).
 
+## Ruch po kratkach (Phase 5)
+
+Pozycje są całkowitymi współrzędnymi kafli mapy (`client/data/maps/start.json`,
+40×30). Serwer wczytuje tę samą mapę co klient i sam decyduje o
+przechodniości. Nowa postać (i każda zapisana pozycja, która stała się
+nieprawidłowa) trafia na najbliższy wolny kafel od punktu startowego mapy.
+Jedna postać na kafel. Brak ruchu po skosie (4 kierunki, jak klawiatura w
+Tibii) — do rozważenia później.
+
 ## Reconnect — zakres
 
 "Reconnect" = gracz łączy się ponownie, loguje i wybiera tę samą postać;
@@ -85,7 +94,7 @@ rozważenia przy realnej potrzebie (np. częste zrywanie połączeń na mobile).
 
 ## Zasada anty-cheat (patrz też KNOWN_ISSUES.md)
 
-Klient wysyła tylko **intencje** (`MOVE dx dy`, `CHAR_SELECT id`, później
+Klient wysyła tylko **intencje** (`STEP dir`, `CHAR_SELECT id`, później
 `ATTACK target_id`, itd.) — nigdy wynik. Serwer jest jedynym miejscem, które
 zapisuje pozycję/HP/przedmioty/złoto, i nigdy nie ufa identyfikatorom od
 klienta bez sprawdzenia własności (np. `CHAR_SELECT` cudzej postaci).

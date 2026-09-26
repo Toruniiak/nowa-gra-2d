@@ -55,4 +55,6 @@ bibliotek "na wszelki wypadek".
 | OpenSSL 3 (`libssl-dev`) | serwer | Phase 4 | szyfrowany transport (TLS) wymagany przed pierwszym kontem (CLAUDE.md, KNOWN_ISSUES.md) + scrypt do haseł. Własna kryptografia wykluczona. |
 | SQLite 3 (`libsqlite3-dev`) | serwer | Phase 4 | persystencja kont i postaci, patrz wyżej |
 
-Testowane wersje (ten kontener): OpenSSL 3.0.13, SQLite 3.45.1.
+| nlohmann/json 3 (`nlohmann-json3-dev`) | serwer | Phase 5 | odczyt mapy i definicji kafli (`client/data/*.json`) — ten sam format co klient. Sam nagłówek, licencja MIT. Własny parser JSON odrzucony (ryzyko błędów w kodzie czytającym dane). |
+
+Testowane wersje (ten kontener): OpenSSL 3.0.13, SQLite 3.45.1, nlohmann/json 3.11.3.

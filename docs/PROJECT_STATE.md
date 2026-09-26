@@ -44,11 +44,23 @@ Czytaj go pierwszy.
 - **Sterowanie padem:** wspólna ścieżka `Input.get_vector` (symulacja
   zdarzenia, nie fizyczny pad).
 
+- **Phase 5 (w toku) — mapa i ruch jak w Tibii:** mapa 40×30
+  (`client/data/maps/start.json`: wioska z domem, jezioro, drogi, ruiny, las
+  na granicy) z grafiką z generatora `tools/art/gen_tileset.py` (styl wg CC0
+  wzoru Summer Engine, rysowana od zera). Serwer wczytuje tę samą mapę,
+  pozycje są na kaflach, ruch `STEP N/E/S/W` z czasem kroku 250 ms, kolejką
+  jednego kroku (spam nie przyspiesza), kolizjami z mapą i między graczami.
+  Zweryfikowane: `tools/test_client.py` (m.in. blokowanie przez gracza,
+  limit prędkości, zatrzymanie na brzegu jeziora wg mapy, zapis kafla),
+  3 uszkodzone mapy → serwer odmawia startu z komunikatem, prawdziwy klient
+  Godot chodzi (`tools/godot_walk_test.gd`: 5 kroków w 1,2 s, płynna
+  animacja), zrzut ekranu przez Xvfb, APK zawiera mapę i grafikę.
+
 ## Co NIE działa / nie istnieje jeszcze
 
 - **Nic nie było uruchomione na telefonie ani użyte przez człowieka** —
   ani APK, ani ekran logowania. Brak `/dev/kvm` w kontenerze.
-- Brak mapy, kamery i jakiejkolwiek grafiki poza kwadratami na szarym tle.
+- Brak potworów, przedmiotów, wielu map/pięter; grafika to pierwsza wersja z generatora.
 - Brak combat, statystyk, itemów, questów, NPC, ekonomii, PvP, guildii.
 - Znane problemy bezpieczeństwa/skali (m.in. scrypt blokuje wątek gry,
   brak limitu `MOVE` na tick): KNOWN_ISSUES.md.

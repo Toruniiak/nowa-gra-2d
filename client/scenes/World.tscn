@@ -1,12 +1,23 @@
-[gd_scene load_steps=5 format=3 uid="uid://c4h8n2p9r1s6t"]
+[gd_scene load_steps=6 format=3 uid="uid://c4h8n2p9r1s6t"]
 
 [ext_resource type="Script" path="res://scripts/world.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/net_client.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/gamepad_status.gd" id="3"]
 [ext_resource type="Script" path="res://scripts/login_ui.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/game_map.gd" id="5"]
 
 [node name="World" type="Node2D"]
 script = ExtResource("1")
+
+[node name="Map" type="Node2D" parent="."]
+script = ExtResource("5")
+
+[node name="Ground" type="TileMapLayer" parent="Map"]
+
+[node name="Sorted" type="Node2D" parent="Map"]
+y_sort_enabled = true
+
+[node name="Camera" type="Camera2D" parent="."]
 
 [node name="NetClient" type="Node" parent="."]
 script = ExtResource("2")

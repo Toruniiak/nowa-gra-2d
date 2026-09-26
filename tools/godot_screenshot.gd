@@ -27,7 +27,7 @@ func _initialize() -> void:
 	root.add_child(world)
 	var net: Node = world.get_node("NetClient")
 	if _wait_world:
-		net.entered_world.connect(func(_id: int) -> void: _countdown = SETTLE_FRAMES)
+		net.entered_world.connect(func(_id: int, _step: float) -> void: _countdown = SETTLE_FRAMES)
 	else:
 		net.secure_connection_ready.connect(func() -> void: _countdown = SETTLE_FRAMES)
 

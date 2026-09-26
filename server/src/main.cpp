@@ -5,6 +5,7 @@
 #include "db/database.hpp"
 #include "net/server.hpp"
 #include "net/tls.hpp"
+#include "world/map.hpp"
 #include "world/world.hpp"
 
 namespace {
@@ -15,11 +16,12 @@ void onStopSignal(int) { g_stopRequested = 1; }
 
 void printUsage(const char* argv0) {
   std::cerr << "Usage: " << argv0
-            << " [port] [db_path] [cert_path] [key_path]\n"
+            << " [port] [db_path] [cert_path] [key_path] [data_dir]\n"
                "  port:      default 7777\n"
                "  db_path:   default game.db (created if missing)\n"
                "  cert_path: default certs/server.crt (see docs/BUILD.md to generate)\n"
-               "  key_path:  default certs/server.key\n";
+               "  key_path:  default certs/server.key\n"
+               "  data_dir:  default ../client/data (tiles.json + maps/start.json)\n";
 }
 
 }  // namespace
@@ -29,12 +31,14 @@ int main(int argc, char** argv) {
   std::string dbPath = "game.db";
   std::string certPath = "certs/server.crt";
   std::string keyPath = "certs/server.key";
+  std::string dataDir = "../client/data";
 
   if (argc > 1) port = static_cast<uint16_t>(std::atoi(argv[1]));
   if (argc > 2) dbPath = argv[2];
   if (argc > 3) certPath = argv[3];
   if (argc > 4) keyPath = argv[4];
-  if (argc > 5) {
+  if (argc > 5) dataDir = argv[5];
+  if (argc > 6) {
     printUsage(argv[0]);
     return EXIT_FAILURE;
   }
@@ -55,7 +59,9 @@ int main(int argc, char** argv) {
   try {
     game::net::TlsContext tls(certPath, keyPath);
     game::db::Database database(dbPath);
-    game::World world;
+    game::GameMap map(dataDir + "/tiles.json", dataDir + "/maps/start.json");
+    std::cout << "Map loaded: " << map.width() << "x" << map.height() << std::endl;
+    game::World world(map);
     game::TcpServer server(port, tls, database);
 
     if (!server.start()) {

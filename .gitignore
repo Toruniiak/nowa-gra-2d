@@ -47,3 +47,6 @@ server/*.db-journal
 server/*.db-wal
 server/*.db-shm
 
+
+# Python bytecode
+__pycache__/

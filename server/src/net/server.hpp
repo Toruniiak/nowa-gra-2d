@@ -31,8 +31,8 @@ class TcpServer {
   // Binds and starts listening. Returns false on failure (logs to stderr).
   bool start();
 
-  // Blocking loop: services network I/O and calls world.applyMove() for
-  // validated intents, broadcasting position updates once per tick.
+  // Blocking loop: services network I/O, queues validated STEP intents in
+  // the World, advances it every tick and broadcasts what changed.
   // tickIntervalMs controls both the select() timeout and broadcast rate.
   // Returns once `stop` becomes non-zero (set from a SIGINT/SIGTERM
   // handler), after saving every in-world character's position.
@@ -87,7 +87,7 @@ class TcpServer {
   void handleCharList(Client& client);
   void handleCharCreate(Client& client, std::istringstream& args);
   void handleCharSelect(Client& client, std::istringstream& args, World& world);
-  void handleMove(Client& client, std::istringstream& args, World& world);
+  void handleStep(Client& client, std::istringstream& args, World& world);
 };
 
 }  // namespace game

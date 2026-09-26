@@ -18,6 +18,9 @@ endif()
 # See docs/TECH_STACK.md for why — this was deliberately deferred until a
 # real need existed, not added speculatively.
 find_package(OpenSSL REQUIRED)
+# Phase 5: map/tile data (client/data/*.json) parsed with nlohmann/json
+# (header-only, MIT) — see docs/TECH_STACK.md.
+find_package(nlohmann_json 3 REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SQLITE3 REQUIRED sqlite3)
 
@@ -27,7 +30,9 @@ add_executable(server
   src/net/tls.cpp
   src/db/database.cpp
   src/auth/password.cpp
+  src/world/map.cpp
+  src/world/world.cpp
 )
 
 target_include_directories(server PRIVATE src ${SQLITE3_INCLUDE_DIRS})
-target_link_libraries(server PRIVATE OpenSSL::SSL OpenSSL::Crypto ${SQLITE3_LIBRARIES})
+target_link_libraries(server PRIVATE OpenSSL::SSL OpenSSL::Crypto ${SQLITE3_LIBRARIES} nlohmann_json::nlohmann_json)

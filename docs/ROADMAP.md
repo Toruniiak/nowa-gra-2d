@@ -29,6 +29,10 @@ działającej sieci i kont.
       PROJECT_STATE.md i KNOWN_ISSUES.md (m.in. scrypt w wątku gry).
 - [ ] **Phase 5 — First World.** Pierwsza prawdziwa mapa (nie placeholder),
       system modułowy map (patrz GAME_DESIGN.md), tile-based, dekoracje.
+      *W toku (2026-09-26): zrobione — ruch po kratkach (serwer + protokół),
+      mapa 40×30 z grafiką w stylu Tibii, kolizje z mapy na serwerze, kamera,
+      animacja chodu. Brakuje: wielu map/pięter i przejść między nimi, kafli
+      przejściowych terenu.*
 - [ ] **Phase 6 — Character Systems.** HP/Mana/EXP/level/statystyki,
       profesje jako dane (nie hardkodowana logika).
 - [ ] **Phase 7 — Combat.** PvE/PvP, melee/ranged/magic, cooldown, obrażenia,
@@ -51,6 +55,6 @@ działającej sieci i kont.
 
 ## Aktualna faza
 
-**Phase 5 (First World)** — jeszcze nie zaczęta. Phase 2 i 4 zamknięte w
+**Phase 5 (First World)** — w toku (patrz wyżej). Phase 2 i 4 zamknięte w
 zakresie możliwym z tego środowiska; test na telefonie i ręczny test ekranu
 logowania zostają po stronie użytkownika (PROJECT_STATE.md).

@@ -1,13 +1,26 @@
 # ASSET_PIPELINE.md
 
-## Stan faktyczny
+## Stan faktyczny (Phase 5, 2026-09-26)
 
-Aktualnie w projekcie istnieją wyłącznie **techniczne placeholdery**:
-kolorowe prostokąty (`client/scripts/player_entity.gd`) reprezentujące
-encje, i placeholder SVG jako ikona projektu. To jest zgodne z zasadą "nie
-udawaj że coś jest gotowe" — te placeholdery są jawnie oznaczone w kodzie i
-**nie wolno** ich pokazywać jako finalnej grafiki w żadnym publicznym
-milestone.
+- **Grafika gry:** `client/assets/tilesets/` (teren 32×32, ściany 32×48,
+  obiekty w komórkach 64×64) i `client/assets/sprites/` (postacie: klatki
+  32×48, rzędy dół/lewo/prawo/góra, kolumny: stoi / krok A / krok B).
+  Wszystko **generowane kodem** przez `tools/art/gen_tileset.py` — po zmianie
+  generatora: `python3 tools/art/gen_tileset.py`. Pochodzenie i licencje:
+  `client/assets/CREDITS.md`.
+- **Wzór stylu:** CC0 "Tibia-style RPG Tileset" (Summer Engine) — tylko
+  palety i faktury; to jeden obraz AI, nie gotowe kafle, więc nie jest w grze.
+- **Definicje:** `client/data/tiles.json` — każdy kafel/obiekt: arkusz,
+  komórka, `walkable`, opcjonalnie animacja (`frames`, `fps`) lub autotile
+  ścian (`top`/`front`). **Serwer czyta z niego tylko `walkable`**, klient
+  grafikę — jedno źródło prawdy.
+- **Mapy:** `client/data/maps/*.json` — warstwy `ground` i `objects` jako
+  wiersze jednoznakowych kodów + `legend`, `spawn`. Edytowalne ręcznie.
+- **Zasada rysowania:** spód-środek każdej grafiki na spodzie-środku kafla;
+  wyższe grafiki (ściany, drzewa, postacie) wystają w górę — rzut skośny.
+  Obiekty i postacie są sortowane po Y (postać za drzewem jest zasłaniana).
+- Klatki animacji kafla muszą leżeć obok siebie w jednym rzędzie atlasu
+  (wymóg `TileSetAtlasSource` w Godocie).
 
 ## Docelowy pipeline (do zbudowania, nie istnieje jeszcze)
 

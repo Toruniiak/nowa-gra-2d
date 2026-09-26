@@ -1,8 +1,8 @@
 extends Node2D
-## Root scene: owns the NetClient and the login screen, spawns/updates
-## entities on server broadcasts, and sends the local player's movement
-## intent. Contains no game rules — it only relays. See
-## docs/ARCHITECTURE.md.
+## Root scene: owns the NetClient, the map, the login screen and the camera;
+## spawns/updates creatures from server broadcasts and turns the player's
+## input into STEP intents. Contains no game rules — the server decides every
+## move. See docs/ARCHITECTURE.md.
 
 @export var server_host := "127.0.0.1"
 @export var server_port := 7777
@@ -12,21 +12,21 @@ extends Node2D
 ## connects unverified.
 @export var tls_trusted_cert := "res://certs/dev_server.crt"
 @export var tls_common_name := "localhost"
+## How many tiles fit across the screen (classic view is 15 wide).
+@export var view_tiles_wide := 15.0
 
 const PLAYER_ENTITY_SCENE := preload("res://scenes/PlayerEntity.tscn")
-const PLAYER_SPEED := 120.0  # px/sec
-# Matches the server tick in server/src/main.cpp (kTickIntervalMs). Sending
-# faster than this wouldn't move the player faster (see KNOWN_ISSUES.md for
-# why that's not yet enforced server-side either) but would just waste
-# bandwidth, so the client throttles to the same rate.
-const SEND_INTERVAL := 0.05
+const MAP_PATH := "res://data/maps/start.json"
 
 var _entities: Dictionary = {}
 var _local_id := -1
-var _send_accum := 0.0
+var _step_duration := 0.25
+var _next_step_at := 0.0
 
 @onready var _net := $NetClient
 @onready var _login_ui := $LoginUI
+@onready var _map := $Map
+@onready var _camera: Camera2D = $Camera
 
 
 func _ready() -> void:
@@ -55,6 +55,10 @@ func _ready() -> void:
 		elif arg.begins_with("--character="):
 			auto_character = value
 
+	if not _map.load_map(MAP_PATH):
+		push_error("world: map failed to load")
+	_setup_camera()
+
 	_net.entered_world.connect(_on_entered_world)
 	_net.entity_position_updated.connect(_on_position_updated)
 	_net.entity_left.connect(_on_entity_left)
@@ -68,6 +72,20 @@ func _ready() -> void:
 	_connect()
 
 
+func _setup_camera() -> void:
+	var view_w := get_viewport_rect().size.x
+	var z := view_w / (view_tiles_wide * GameMapScript.TILE)
+	_camera.zoom = Vector2(z, z)
+	_camera.limit_left = 0
+	_camera.limit_top = 0
+	_camera.limit_right = _map.width * GameMapScript.TILE
+	_camera.limit_bottom = _map.height * GameMapScript.TILE
+	_camera.position = Vector2(_map.spawn) * GameMapScript.TILE
+
+
+const GameMapScript := preload("res://scripts/game_map.gd")
+
+
 func _connect() -> void:
 	_net.connect_to_server(server_host, server_port, tls_trusted_cert, tls_common_name)
 
@@ -78,9 +96,10 @@ func _on_reconnect_requested(host: String, port: int) -> void:
 	_connect()
 
 
-func _on_entered_world(local_entity_id: int) -> void:
+func _on_entered_world(local_entity_id: int, step_duration: float) -> void:
 	_local_id = local_entity_id
-	print("Entered world as entity %d" % local_entity_id)
+	_step_duration = step_duration
+	print("Entered world as entity %d (step %d ms)" % [local_entity_id, int(step_duration * 1000)])
 
 
 func _on_connection_failed(_reason: String) -> void:
@@ -90,35 +109,51 @@ func _on_connection_failed(_reason: String) -> void:
 	_local_id = -1
 
 
-func _on_position_updated(entity_id: int, x: float, y: float) -> void:
-	var node: Node2D = _entities.get(entity_id)
+func _on_position_updated(entity_id: int, tile: Vector2i, facing: String) -> void:
+	var node = _entities.get(entity_id)
 	if node == null:
 		node = PLAYER_ENTITY_SCENE.instantiate()
 		node.is_local = (entity_id == _local_id)
-		add_child(node)
+		node.step_duration = _step_duration
+		_map.sorted_layer().add_child(node)
 		_entities[entity_id] = node
 		if node.is_local:
-			print("Local entity %d spawned at (%s, %s)" % [entity_id, x, y])
-	node.set_server_position(x, y)
+			print("Local entity %d spawned at (%d, %d)" % [entity_id, tile.x, tile.y])
+	node.set_tile_position(tile, facing)
 
 
 func _on_entity_left(entity_id: int) -> void:
-	var node: Node2D = _entities.get(entity_id)
+	var node = _entities.get(entity_id)
 	if node:
 		node.queue_free()
 		_entities.erase(entity_id)
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
+	var local = _entities.get(_local_id)
+	if local:
+		_camera.position = local.position - Vector2(0, GameMapScript.TILE / 2.0)
 	if _local_id == -1:
 		return
-	_send_accum += delta
-	if _send_accum < SEND_INTERVAL:
+	var dir := _input_direction()
+	if dir.is_empty():
 		return
-	_send_accum = 0.0
+	# Keep one step in flight: the server holds a single queued step, so
+	# sending again shortly before the current one ends gives continuous
+	# walking without the client ever deciding where it actually is.
+	var now := Time.get_ticks_msec() / 1000.0
+	if now < _next_step_at:
+		return
+	_next_step_at = now + _step_duration * 0.8
+	_net.send_step(dir)
 
-	var input_vec := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
-	if input_vec == Vector2.ZERO:
-		return
-	var move := input_vec * PLAYER_SPEED * SEND_INTERVAL
-	_net.send_move_intent(move.x, move.y)
+
+## Keyboard, gamepad and (later) on-screen joystick all feed the same
+## ui_* actions; the dominant axis wins — movement is 4-directional.
+func _input_direction() -> String:
+	var v := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+	if v.length() < 0.3:
+		return ""
+	if absf(v.x) > absf(v.y):
+		return "E" if v.x > 0 else "W"
+	return "S" if v.y > 0 else "N"

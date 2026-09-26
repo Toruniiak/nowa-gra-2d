@@ -14,8 +14,8 @@ signal characters_listed(characters: Array)  # Array of {id: int, name: String}
 signal character_created(id: int, name: String)
 signal character_create_failed(reason: String)
 signal character_select_failed(reason: String)
-signal entered_world(local_entity_id: int)
-signal entity_position_updated(entity_id: int, x: float, y: float)
+signal entered_world(local_entity_id: int, step_duration: float)
+signal entity_position_updated(entity_id: int, tile: Vector2i, facing: String)
 signal entity_left(entity_id: int)
 
 enum State { DISCONNECTED, TCP_CONNECTING, TLS_HANDSHAKING, READY }
@@ -151,10 +151,12 @@ func send_character_select(character_id: int) -> void:
 	_send("CHAR_SELECT %d" % character_id)
 
 
-func send_move_intent(dx: float, dy: float) -> void:
+## dir: "N", "E", "S" or "W". Only an intent — the server decides if, when
+## and where the character moves (walls, other players, step duration).
+func send_step(dir: String) -> void:
 	if _local_entity_id == -1:
 		return
-	_send("MOVE %f %f" % [dx, dy])
+	_send("STEP %s" % dir)
 
 
 func _handle_line(line: String) -> void:
@@ -188,9 +190,11 @@ func _handle_line(line: String) -> void:
 			character_select_failed.emit(parts[1] if parts.size() > 1 else "")
 		"WELCOME":
 			_local_entity_id = int(parts[1])
-			entered_world.emit(_local_entity_id)
+			var step_ms := int(parts[2]) if parts.size() > 2 else 250
+			entered_world.emit(_local_entity_id, step_ms / 1000.0)
 		"POS":
-			entity_position_updated.emit(int(parts[1]), float(parts[2]), float(parts[3]))
+			if parts.size() >= 5:
+				entity_position_updated.emit(int(parts[1]), Vector2i(int(parts[2]), int(parts[3])), parts[4])
 		"LEAVE":
 			entity_left.emit(int(parts[1]))
 		_:

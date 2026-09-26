@@ -10,6 +10,7 @@
 #include <openssl/err.h>
 
 #include <cctype>
+#include <cmath>
 #include <cerrno>
 #include <cstring>
 #include <iostream>
@@ -45,6 +46,11 @@ bool isValidUsername(const std::string& s) {
     if (!std::isalnum(c) && c != '_') return false;
   }
   return true;
+}
+
+std::string posLine(EntityId id, const Entity& e) {
+  return "POS " + std::to_string(id) + " " + std::to_string(e.pos.x) + " " + std::to_string(e.pos.y) +
+         " " + dirToChar(e.facing);
 }
 
 bool isValidPassword(const std::string& s) { return s.size() >= 6 && s.size() <= 128; }
@@ -144,6 +150,7 @@ void TcpServer::runLoop(World& world, int tickIntervalMs, const volatile std::si
     // happens to report the fd ready again. See docs/NETWORKING.md.
     readClients(world);
 
+    world.update(Clock::now());
     broadcastDirty(world);
   }
 
@@ -160,7 +167,8 @@ void TcpServer::saveCharacter(const Client& client, World& world) {
   if (client.entityId == 0 || !client.characterId) return;
   auto it = world.entities().find(client.entityId);
   if (it != world.entities().end()) {
-    db_.saveCharacterPosition(*client.characterId, it->second.x, it->second.y);
+    db_.saveCharacterPosition(*client.characterId, static_cast<float>(it->second.pos.x),
+                              static_cast<float>(it->second.pos.y));
   }
 }
 
@@ -291,12 +299,12 @@ void TcpServer::handleLine(Client& client, const std::string& line, World& world
     handleCharCreate(client, iss);
   } else if (cmd == "CHAR_SELECT") {
     handleCharSelect(client, iss, world);
-  } else if (cmd == "MOVE") {
-    handleMove(client, iss, world);
+  } else if (cmd == "STEP") {
+    handleStep(client, iss, world);
   }
   // Unknown/out-of-state commands are silently ignored at this stage — see
   // docs/NETWORKING.md. Each handler below independently checks that the
-  // client is in the right state (e.g. MOVE requires entityId != 0), so an
+  // client is in the right state (e.g. STEP requires entityId != 0), so an
   // out-of-order command from a misbehaving client is a no-op, not a crash.
 }
 
@@ -428,8 +436,12 @@ void TcpServer::handleCharSelect(Client& client, std::istringstream& args, World
   }
 
   client.characterId = record->id;
-  client.entityId = world.addEntity(record->x, record->y);
-  sendLine(client, "WELCOME " + std::to_string(client.entityId));
+  // Positions are whole tiles; lround() also maps any legacy fractional
+  // value, and World::addEntity() relocates an invalid or occupied position.
+  client.entityId = world.addEntity({static_cast<int>(std::lround(record->x)),
+                                     static_cast<int>(std::lround(record->y))});
+  sendLine(client, "WELCOME " + std::to_string(client.entityId) + " " +
+                       std::to_string(std::chrono::milliseconds(kStepDuration).count()));
 
   // Snapshot of everyone already in the world: broadcastDirty() only sends
   // entities that changed this tick, so without this a joining (or
@@ -437,18 +449,19 @@ void TcpServer::handleCharSelect(Client& client, std::istringstream& args, World
   // entity itself is marked dirty by addEntity() and goes out next tick.
   for (const auto& [id, entity] : world.entities()) {
     if (id == client.entityId) continue;
-    sendLine(client, "POS " + std::to_string(id) + " " + std::to_string(entity.x) + " " +
-                         std::to_string(entity.y));
+    sendLine(client, posLine(id, entity));
   }
 }
 
-void TcpServer::handleMove(Client& client, std::istringstream& args, World& world) {
+void TcpServer::handleStep(Client& client, std::istringstream& args, World& world) {
   if (client.entityId == 0) return;  // not playing yet
 
-  float dx = 0.0f, dy = 0.0f;
-  if (args >> dx >> dy) {
-    world.applyMove(client.entityId, dx, dy);
-  }
+  std::string dir;
+  args >> dir;
+  const auto d = dir.size() == 1 ? dirFromChar(dir[0]) : std::nullopt;
+  if (!d) return;
+  world.queueStep(client.entityId, *d);
+  world.update(Clock::now());  // an idle entity steps now, not next tick
 }
 
 void TcpServer::removeClient(std::size_t index, World& world) {
@@ -486,8 +499,7 @@ void TcpServer::broadcastDirty(World& world) {
   for (EntityId id : world.dirty()) {
     auto it = world.entities().find(id);
     if (it == world.entities().end()) continue;
-    broadcastLine("POS " + std::to_string(id) + " " + std::to_string(it->second.x) + " " +
-                  std::to_string(it->second.y));
+    broadcastLine(posLine(id, it->second));
   }
   world.clearDirty();
 }

@@ -24,9 +24,13 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -subj "/CN=localhost" \
 Uruchomienie (z katalogu `server/`, domyślne ścieżki są względne):
 
 ```bash
-./build/server [port] [db_path] [cert_path] [key_path]
-# domyślnie: 7777 game.db certs/server.crt certs/server.key
+./build/server [port] [db_path] [cert_path] [key_path] [data_dir]
+# domyślnie: 7777 game.db certs/server.crt certs/server.key ../client/data
 ```
+
+Serwer wczytuje mapę z `data_dir` (`tiles.json` + `maps/start.json`) — tę
+samą, którą rysuje klient; błędna mapa = serwer nie startuje (z komunikatem).
+Zależność: `apt install nlohmann-json3-dev`.
 
 Baza SQLite tworzy się sama przy pierwszym starcie. `Ctrl+C`/`SIGTERM` =
 łagodne zamknięcie: serwer zapisuje pozycje wszystkich graczy online.
@@ -74,6 +78,12 @@ godot4 --headless --path client --max-fps 60 --quit-after 240 -- \
   --server-port=7788 --register --user=test_user --password="haslo123" --character="Bohater"
 # oczekiwane: "Entered world as entity N" i "Local entity N spawned at (x, y)"
 ```
+
+Chodzenie w prawdziwym kliencie (trzyma "w prawo", sprawdza kroki
+potwierdzone przez serwer i płynność animacji): `tools/godot_walk_test.gd`.
+
+Grafika: `python3 tools/art/gen_tileset.py` odtwarza wszystkie arkusze w
+`client/assets/`.
 
 Ścieżka "zły adres → wpisanie poprawnego → Połącz ponownie" na prawdziwej
 scenie: `tools/godot_reconnect_test.gd` (instrukcja w nagłówku pliku).

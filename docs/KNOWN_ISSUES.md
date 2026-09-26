@@ -11,9 +11,6 @@ związanego zadania; naprawiać w fazie, do której należą (patrz ROADMAP.md).
   ogranicza jedno połączenie, ale **wiele równoległych połączeń nadal może
   spowolnić serwer dla wszystkich**. Właściwa naprawa: hashowanie w wątku
   roboczym + globalny limit — przed jakimkolwiek publicznym serwerem.
-- **Brak rate-limitingu `MOVE`.** Serwer przycina pojedynczy ruch
-  (`kMaxMovePerTick`), ale nie liczy ruchów na tick — kilka `MOVE` w jednym
-  ticku = szybszy ruch. Phase 16 (lub wcześniej, jeśli wyjdzie w testach).
 - **Istnienie loginu da się ustalić.** `REGISTER` odpowiada
   `username_taken` (standardowy UX w MMO), a `LOGIN` dla nieistniejącego
   konta odpowiada szybciej (nie liczy scrypt). Zaakceptowane — obrona przed
@@ -64,12 +61,20 @@ związanego zadania; naprawiać w fazie, do której należą (patrz ROADMAP.md).
 - Brak tokenów sesji: po zerwaniu połączenia trzeba zalogować się ponownie
   (patrz NETWORKING.md, "Reconnect — zakres").
 
-## Klient / UI
+## Mapa / grafika
 
-- **Brak kamery.** Współrzędne świata = piksele ekranu od lewego górnego
-  rogu; postać w (0, 0) jest w połowie poza ekranem. Widać to na zrzucie z
-  2026-09-26. Kamera podążająca za graczem — razem z pierwszą prawdziwą mapą
-  (Phase 5).
+- Przejścia terenu są kanciaste (np. brzeg jeziora schodkami po kaflach) —
+  brak kafli przejściowych/autotilingu terenu. Do dodania w generatorze
+  grafiki.
+- Ruiny: ciemna podłoga i ciemne ściany mają mały kontrast — do poprawy
+  palety.
+- Jedna mapa (`start.json`), brak pięter (z) i przejść między mapami —
+  "system modułowy map" z ROADMAP (Phase 5) jeszcze nie istnieje.
+- Brak ruchu po skosie.
+- Tryb ekranu to portret (720×1280) — przy widoku 15 kafli wszerz widać ~26
+  w pionie. Czy gra ma być w poziomie (jak Tibia na PC) — do decyzji.
+
+## Klient / UI
 - Ekran logowania nie był jeszcze używany przez człowieka ani na telefonie —
   sprawdzony tylko automatycznie (sterowanie z harnessu) i wizualnie
   (zrzut ekranu przez Xvfb). Brak m.in. marginesów panelu, zapamiętywania
@@ -88,9 +93,10 @@ związanego zadania; naprawiać w fazie, do której należą (patrz ROADMAP.md).
 
 ## Grafika
 
-- Wszystkie encje to kolorowe kwadraty 32×32 (niebieski = własna postać,
-  czerwony = inni) na szarym tle, bez mapy. **Placeholder — patrz
-  ASSET_PIPELINE.md.** Nie pokazywać jako finalnej grafiki.
+- Grafika jest pierwszą wersją z generatora (`tools/art/gen_tileset.py`):
+  jeden wygląd postaci (niebieski = Ty, czerwony = inni), brak potworów,
+  animacji ataku i przedmiotów. Dobry grafik zrobi to lepiej — generator
+  jest punktem startowym, nie wersją finalną.
 
 ## Android
 

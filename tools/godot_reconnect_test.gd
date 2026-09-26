@@ -39,6 +39,6 @@ func _process(delta: float) -> bool:
 	return false
 
 
-func _on_entered_world(entity_id: int) -> void:
+func _on_entered_world(entity_id: int, _step: float) -> void:
 	print("harness: PASS — entered world as entity %d after reconnect=%s" % [entity_id, _pressed])
 	quit(0 if _pressed else 1)
