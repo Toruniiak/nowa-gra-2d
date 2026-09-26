@@ -1,23 +1,23 @@
 # nowa-gra-2d
 
-2D MMORPG PvP na Androida, open world, inspirowane klasycznymi MMORPG (w
-szczególności Tibią) — **własny kod, własne assety, własna nazwa i tożsamość
+2D MMORPG PvP na Androida, open world, widok izometryczny (pochylona kamera
+w stylu Diablo 2), inspirowane klasycznymi MMORPG (w szczególności Tibią) — **własny kod, własne assety, własna nazwa i tożsamość
 wizualna, docelowo**. Zero powiązań z projektem Azonera (inne repo, inny
 serwer, inny klient).
 
 ## Stos
 
-- **Serwer** (`server/`) — C++20, CMake, autorytatywny, POSIX sockets.
+- **Serwer** (`server/`) — C++20, CMake, autorytatywny, TCP + TLS (OpenSSL), SQLite.
 - **Klient** (`client/`) — Godot 4.3, eksport Android + desktop.
 
 Uzasadnienie wyboru i pełny stan faktyczny: `docs/TECH_STACK.md`.
 
 ## Status
 
-Wczesna faza (Phase 1-3 z `docs/ROADMAP.md`): fundament sieciowy działa i
-jest zweryfikowany end-to-end (serwer + headless klient Godot + test
-anty-cheatu). Brak jeszcze: grafiki (same placeholdery), kont, combat,
-`.apk`. Pełny, szczery stan: `docs/PROJECT_STATE.md` — **czytaj to pierwsze
+Wczesna faza (Phase 1-4 z `docs/ROADMAP.md`): szyfrowane połączenie, konta,
+postacie z zapisem pozycji, ruch z anty-cheatem, ekran logowania, debug
+`.apk` — zweryfikowane automatycznie, jeszcze nie na telefonie. Brak:
+mapy, kamery, grafiki (same placeholdery), combat. Pełny, szczery stan: `docs/PROJECT_STATE.md` — **czytaj to pierwsze
 w nowej sesji.**
 
 ## Build

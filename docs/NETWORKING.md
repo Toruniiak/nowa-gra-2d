@@ -2,47 +2,90 @@
 
 ## Stan faktyczny (co jest zaimplementowane i zweryfikowane)
 
-- Serwer: TCP, POSIX sockets, `server/src/net/`. Nasłuchuje na porcie
-  (domyślnie `7777`, konfigurowalny przez argument/env — patrz kod).
-  Protokół tekstowy, linia = jedna komenda, `\n`-terminowana (prosty do
-  debugowania na tym etapie; do rewizji przy realnym obciążeniu — patrz
-  "Do zdecydowania" poniżej).
-- Komendy klient→serwer:
-  - `MOVE <dx> <dy>` — intencja ruchu. Serwer **waliduje** (odległość na tick
-    nie może przekroczyć maksymalnej prędkości) i tylko wtedy aktualizuje
-    pozycję. To pierwszy, minimalny element anty-cheatu: **serwer nigdy nie
-    przyjmuje pozycji od klienta, tylko intencję ruchu**.
-- Komendy serwer→klient:
-  - `WELCOME <entity_id>` — przydzielony identyfikator encji po połączeniu.
-  - `POS <entity_id> <x> <y>` — stan pozycji encji, rozsyłany do wszystkich
-    klientów po każdym ticku, w którym coś się zmieniło.
-  - `LEAVE <entity_id>` — encja rozłączona.
-- Zweryfikowane (patrz PROJECT_STATE.md): serwer akceptuje wielu klientów
-  równocześnie, waliduje ruch, rozsyła pozycje. Testowane skryptem symulującym
-  klienta (nie przez Godot — patrz ograniczenia środowiska w TECH_STACK.md).
-- Klient (Godot): `client/net/` łączy się przez `StreamPeerTCP`, wysyła `MOVE`,
-  odbiera i stosuje `POS`/`WELCOME`/`LEAVE`.
+- Serwer: TCP + **TLS 1.2+ (OpenSSL)**, `server/src/net/`. Domyślny port
+  `7777` (argument — patrz BUILD.md). Klient bez TLS nie dostaje żadnej
+  odpowiedzi protokołu (połączenie zamykane przy nieudanym handshake'u).
+- Protokół tekstowy, linia = jedna komenda, `\n`-terminowana, max 1024 B na
+  niedokończoną linię (dłuższa → rozłączenie).
+- Weryfikacja: `tools/test_client.py` (34 asercje, w tym bezpieczeństwo) +
+  prawdziwy klient Godot (patrz PROJECT_STATE.md).
+
+## Maszyna stanów połączenia
+
+```
+TLS handshake ──► NIEZALOGOWANY ──REGISTER/LOGIN ok──► ZALOGOWANY ──CHAR_SELECT ok──► W ŚWIECIE
+                    │  (60 s na zalogowanie,                │                            │
+                    │   inaczej rozłączenie)                 │ CHAR_LIST / CHAR_CREATE    │ MOVE
+```
+
+Każdy handler sam sprawdza stan — komenda spoza swojego stanu (np. `MOVE`
+przed wyborem postaci, `CHAR_LIST` przed logowaniem) jest **ignorowana bez
+odpowiedzi**, nie powoduje błędu. Zmiana postaci = nowe połączenie.
+
+## Komendy klient → serwer
+
+| Komenda | Stan | Uwagi |
+|---|---|---|
+| `REGISTER <login> <hasło>` | niezalogowany | login 3-32 znaki `[A-Za-z0-9_]`, hasło 6-128 znaków (reszta linii — może mieć spacje). Sukces = od razu zalogowany. |
+| `LOGIN <login> <hasło>` | niezalogowany | |
+| `CHAR_LIST` | zalogowany | |
+| `CHAR_CREATE <nazwa>` | zalogowany | 3-20 znaków, litery/cyfry/spacje (nie na brzegach); nazwy globalnie unikalne |
+| `CHAR_SELECT <id>` | zalogowany | serwer sprawdza, że postać należy do konta |
+| `MOVE <dx> <dy>` | w świecie | intencja; serwer przycina do `kMaxMovePerTick` (6.0) |
+
+## Komendy serwer → klient
+
+| Komenda | Znaczenie |
+|---|---|
+| `AUTH_OK` | zalogowano / zarejestrowano |
+| `AUTH_FAIL <powód>` | `invalid_input`, `username_taken`, `bad_credentials`, `rate_limited`, `server_error` |
+| `CHARS <id>:<nazwa> ...` | lista postaci konta (pusta = samo `CHARS`). Nazwy mogą mieć spacje, ale nigdy `:` — klient skleja tokeny bez prefiksu `<id>:` z poprzednią nazwą. |
+| `CHAR_CREATED <id> <nazwa>` / `CHAR_CREATE_FAIL <powód>` | `invalid_name`, `name_taken` |
+| `CHAR_SELECT_FAIL <powód>` | `invalid_id`, `not_found` (to samo dla "nie istnieje" i "cudza postać") |
+| `WELCOME <entity_id>` | wejście do świata; zaraz po nim snapshot `POS` wszystkich obecnych encji |
+| `POS <entity_id> <x> <y>` | pozycja encji (co tick, gdy się zmieniła) |
+| `LEAVE <entity_id>` | encja opuściła świat |
+
+`POS`/`LEAVE` trafiają **wyłącznie do połączeń w świecie** — nie do
+niezalogowanych ani zalogowanych bez wybranej postaci (inaczej każdy mógłby
+śledzić ruchy graczy bez konta).
+
+`entity_id` jest ulotny (per sesja w świecie); trwałą tożsamością jest
+`character id` z bazy.
+
+## Bezpieczeństwo protokołu
+
+- **TLS:** serwer ładuje certyfikat + klucz PEM (BUILD.md). Klient Godot
+  **zawsze weryfikuje** serwer: przypięty certyfikat (`res://certs/dev_server.crt`)
+  albo systemowe CA — nie ma trybu "bez weryfikacji" (patrz KNOWN_ISSUES.md).
+- **Hasła:** tylko scrypt + sól w bazie, porównanie `CRYPTO_memcmp` (stały czas).
+- **Throttling uwierzytelniania (per połączenie):** max 1 próba
+  `REGISTER`/`LOGIN` na sekundę (nadmiar → `rate_limited` bez liczenia scrypt),
+  5 nieudanych prób → rozłączenie.
+- **Limity zasobów:** 1024 B na niedokończoną linię, 64 KB bufora wyjściowego
+  (klient, który nie czyta, jest rozłączany), 60 s na zalogowanie, deskryptory
+  ≥ `FD_SETSIZE` odrzucane (ograniczenie `select()`).
+
+## Reconnect — zakres
+
+"Reconnect" = gracz łączy się ponownie, loguje i wybiera tę samą postać;
+serwer odtwarza ją w zapisanej pozycji. Pozycja zapisywana przy rozłączeniu
+i przy łagodnym zamknięciu serwera (SIGINT/SIGTERM). **Nie** ma wznawiania
+przerwanej sesji bez ponownego logowania (tokeny sesji) — świadomie, do
+rozważenia przy realnej potrzebie (np. częste zrywanie połączeń na mobile).
 
 ## Do zdecydowania (nie zgaduj, eskaluj przy realnej potrzebie)
 
-- **TCP vs UDP:** TCP wybrany na start dla prostoty i pewności dostarczenia
-  podczas budowy fundamentu. Przy realnym ruchu wielu graczy TCP head-of-line
-  blocking może być problemem — do zmiany na UDP (+ własna warstwa
-  potwierdzeń dla akcji krytycznych jak combat) w Phase 15 (Optymalizacja),
-  na podstawie rzeczywistych pomiarów, nie przed nimi.
-- **Format pakietów:** tekstowy protokół jest czytelny i łatwy do debugowania
-  teraz, ale nieefektywny (parsing stringów) i podatny na błędy formatu przy
-  rozroście liczby komend. Do rewizji na binarny/TLV przy dodawaniu combat/
-  inventory (Phase 7+), gdy liczba typów pakietów wzrośnie.
-- **Szyfrowanie transportu:** brak. Do dodania przed jakimkolwiek testem z
-  realnymi kontami/hasłami (Phase 4) — TLS albo własny handshake, decyzja
-  wtedy.
-- **Reconnect/disconnect handling:** obecnie rozłączenie = usunięcie encji.
-  Brak zachowania stanu sesji na reconnect — do Phase 4.
+- **TCP vs UDP:** TCP na start. Head-of-line blocking przy wielu graczach — do
+  rewizji w Phase 15 na podstawie pomiarów.
+- **Format pakietów:** tekstowy — czytelny, ale kruchy (np. lista `CHARS` z
+  nazwami ze spacjami). Do rewizji na binarny/TLV przy Phase 7+.
+- **`select()` → poll/epoll:** limit 1024 deskryptorów i O(n) na tick.
+- **Tokeny sesji do szybkiego reconnectu** — patrz wyżej.
 
 ## Zasada anty-cheat (patrz też KNOWN_ISSUES.md)
 
-Klient wysyła tylko **intencje** (`MOVE dx dy`, później `ATTACK target_id`,
-`USE_ITEM item_id`, itd.) — nigdy wynik. Serwer jest jedynym miejscem, które
-zapisuje pozycję/HP/przedmioty/złoto. Każdy nowy typ pakietu klient→serwer
-musi być projektowany z tą zasadą, nie jako wyjątek.
+Klient wysyła tylko **intencje** (`MOVE dx dy`, `CHAR_SELECT id`, później
+`ATTACK target_id`, itd.) — nigdy wynik. Serwer jest jedynym miejscem, które
+zapisuje pozycję/HP/przedmioty/złoto, i nigdy nie ufa identyfikatorom od
+klienta bez sprawdzenia własności (np. `CHAR_SELECT` cudzej postaci).

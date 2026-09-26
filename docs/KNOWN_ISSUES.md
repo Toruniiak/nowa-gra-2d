@@ -5,53 +5,95 @@ związanego zadania; naprawiać w fazie, do której należą (patrz ROADMAP.md).
 
 ## Bezpieczeństwo / anty-cheat
 
-- **Brak rate-limitingu pakietów.** Serwer waliduje wielkość *pojedynczego*
-  ruchu (`kMaxMovePerTick`), ale nie ogranicza, jak często klient może
-  wysyłać `MOVE`. Złośliwy klient wysyłający pakiety szybciej niż tick
-  serwera może realnie ruszać się szybciej niż zamierzona prędkość. Do
-  naprawy w Phase 16 (Security) — albo wcześniej, jeśli okaże się problemem
-  przy pierwszych testach wieloosobowych.
-- **Brak szyfrowania transportu.** Zwykły TCP, plaintext. Akceptowalne teraz
-  (brak kont/haseł w systemie), ale musi być rozwiązane przed Phase 4
-  (Login) — nie później.
-- **Brak uwierzytelniania połączeń.** Każdy, kto się połączy, dostaje
-  encję. Do zmiany razem z systemem kont.
+- **Scrypt blokuje pętlę gry.** Serwer jest jednowątkowy, a każde
+  `REGISTER`/`LOGIN` liczy scrypt ~50 ms — w tym czasie nikt nie dostaje
+  ticków. Throttling per połączenie (1 próba/s, 5 porażek → rozłączenie)
+  ogranicza jedno połączenie, ale **wiele równoległych połączeń nadal może
+  spowolnić serwer dla wszystkich**. Właściwa naprawa: hashowanie w wątku
+  roboczym + globalny limit — przed jakimkolwiek publicznym serwerem.
+- **Brak rate-limitingu `MOVE`.** Serwer przycina pojedynczy ruch
+  (`kMaxMovePerTick`), ale nie liczy ruchów na tick — kilka `MOVE` w jednym
+  ticku = szybszy ruch. Phase 16 (lub wcześniej, jeśli wyjdzie w testach).
+- **Istnienie loginu da się ustalić.** `REGISTER` odpowiada
+  `username_taken` (standardowy UX w MMO), a `LOGIN` dla nieistniejącego
+  konta odpowiada szybciej (nie liczy scrypt). Zaakceptowane — obrona przed
+  brute-force opiera się na throttlingu, nie na ukrywaniu loginów.
+- **Nieograniczone tworzenie kont i postaci.** Brak limitu kont z jednego
+  źródła i limitu postaci na konto — to decyzje projektowe (ile postaci na
+  konto?) + anty-abuse (Phase 16). Nie wymyślono tu wartości.
+- **Certyfikat dev jest self-signed (CN=localhost).** Klient go przypina, więc
+  połączenie jest zweryfikowane — ale każdy deweloper generuje własny i musi
+  go skopiować do klienta przed eksportem (BUILD.md). Publiczny serwer
+  wymaga prawdziwej domeny + certyfikatu z CA (klient wtedy weryfikuje przez
+  systemowe CA, bez przypinania).
+- **Obserwacja, nie diagnoza:** w Godot 4.3.stable `TLSOptions.client_unsafe()`
+  i tak przerywał handshake z naszym serwerem (`x509_verify_cert -0x2700`).
+  Nie ustalono przyczyny (podejrzenie: obsługa opcjonalnej weryfikacji w
+  TLS 1.3 w dołączonym mbedTLS). Bez znaczenia w praktyce — klient celowo
+  nie ma trybu bez weryfikacji.
+- **Hasło w argumentach linii poleceń** (`--password=` w kliencie) jest
+  widoczne dla innych procesów — wyłącznie do testów/dev, nigdy dla
+  prawdziwego konta.
+
+## Persystencja
+
+- Pozycja zapisywana tylko przy rozłączeniu gracza i przy łagodnym zamknięciu
+  serwera (SIGINT/SIGTERM). **Crash lub `kill -9` = utrata ruchu od
+  zalogowania** dla graczy online. Okresowy zapis — gdy pojawi się więcej
+  stanu do zapisywania (Phase 6+).
+- Brak migracji schematu — `CREATE TABLE IF NOT EXISTS`. Pierwsza zmiana
+  schematu musi wprowadzić wersjonowanie (np. `PRAGMA user_version`) +
+  backup przed migracją.
+- Brak backupów bazy (to dev). Wymagane przed jakimikolwiek prawdziwymi
+  danymi graczy.
 
 ## Sieć
 
-- **Format tekstowy protokołu** jest nieefektywny i będzie wymagał rewizji
-  (binarny/TLV) przy większej liczbie typów pakietów (combat, inventory).
-- Serwer loguje przez `std::cout`, który jest w pełni buforowany przy
-  przekierowaniu do pliku — logi mogą się pojawić z opóźnieniem/dopiero po
-  zamknięciu procesu. Kosmetyczne, ale warto dodać `std::endl`/flush albo
-  `std::ios::sync_with_stdio` przy pierwszym realnym debugowaniu produkcyjnym.
-- Brak interpolacji ruchu po stronie klienta — pozycje są ustawiane
-  bezpośrednio (`set_server_position`). Przy prawdziwym jitterze sieciowym
-  (nie loopback) ruch innych graczy będzie się "szarpał". Do dodania, gdy
-  realnie zaobserwowane, nie przed.
+- **`select()`**: max 1024 deskryptorów (wyższe są odrzucane, nie psują
+  pamięci), O(n) na tick, jeden `accept()` na tick. Do zmiany na poll/epoll
+  przy realnej liczbie graczy.
+- **Format tekstowy protokołu** — do rewizji (binarny/TLV) przy combat/
+  inventory. Już teraz kruchy w miejscu listy `CHARS` (patrz NETWORKING.md).
+- `WANT_WRITE` przy TLS nie jest śledzony osobnym zestawem `select()` — zapis
+  jest ponawiany w następnym ticku (max ~50 ms opóźnienia). Wystarczające przy
+  obecnym ruchu.
+- Serwer loguje przez `std::cout` (buforowany przy przekierowaniu do pliku) —
+  kosmetyczne.
+- Brak interpolacji ruchu po stronie klienta — przy realnym jitterze ruch
+  innych graczy będzie "szarpał". Do dodania, gdy zaobserwowane.
+- Brak tokenów sesji: po zerwaniu połączenia trzeba zalogować się ponownie
+  (patrz NETWORKING.md, "Reconnect — zakres").
+
+## Klient / UI
+
+- **Brak kamery.** Współrzędne świata = piksele ekranu od lewego górnego
+  rogu; postać w (0, 0) jest w połowie poza ekranem. Widać to na zrzucie z
+  2026-09-26. Kamera podążająca za graczem — razem z pierwszą prawdziwą mapą
+  (Phase 5).
+- Ekran logowania nie był jeszcze używany przez człowieka ani na telefonie —
+  sprawdzony tylko automatycznie (sterowanie z harnessu) i wizualnie
+  (zrzut ekranu przez Xvfb). Brak m.in. marginesów panelu, zapamiętywania
+  adresu serwera i loginu między uruchomieniami.
+- Adres serwera domyślnie `127.0.0.1` — na telefonie trzeba wpisać adres PC w
+  sieci lokalnej i nacisnąć "Połącz ponownie" (pierwsza próba połączenia
+  z 127.0.0.1 na telefonie się nie uda, co odsłania ten przycisk).
 
 ## Sterowanie padem
 
-- Ruch działa z padem (D-pad/lewy analog) przez domyślne bindowanie
-  silnika do `ui_left/right/up/down` — zweryfikowane symulacją zdarzenia
-  `InputEventJoypadMotion` w tej sesji (nie testem na fizycznym padzie
-  Bluetooth, którego tu nie ma). Test na prawdziwym sprzęcie: po stronie
-  użytkownika.
-- Nie zaimplementowano: przypisania przycisków pada do akcji (atak/użycie
-  itemu) — nie istnieje jeszcze system akcji do zbindowania (Phase 7).
-  Nie zaimplementowano: tuningu deadzone ponad wartość domyślną silnika,
-  rumble/vibration feedback, UI wyboru "touch vs. gamepad" (na razie działają
-  jednocześnie, bez konfliktu, bo to jedna ścieżka `Input.get_vector`).
+- Ruch działa z padem przez domyślne bindowanie `ui_left/right/up/down` —
+  zweryfikowane symulacją zdarzenia, nie fizycznym padem. Test na sprzęcie:
+  po stronie użytkownika.
+- Brak: przycisków akcji (nie ma jeszcze systemu akcji, Phase 7), tuningu
+  deadzone, wibracji.
 
 ## Grafika
 
-- Wszystkie encje renderowane jako kolorowe prostokąty. **Placeholder — patrz
+- Wszystkie encje to kolorowe kwadraty 32×32 (niebieski = własna postać,
+  czerwony = inni) na szarym tle, bez mapy. **Placeholder — patrz
   ASSET_PIPELINE.md.** Nie pokazywać jako finalnej grafiki.
 
 ## Android
 
-- Android SDK/NDK nie zainstalowane w tym kontenerze — `dl.google.com`
-  zablokowany na dzień 2026-09-26. Patrz PROJECT_STATE.md.
-- Brak `/dev/kvm` w tym kontenerze → nawet po instalacji SDK, **emulator
-  Androida nie zadziała tutaj**. Test na urządzeniu wymaga maszyny
+- APK budowany i weryfikowany (manifest, podpis, zawartość), ale **nigdy nie
+  uruchomiony na urządzeniu** — brak `/dev/kvm` w kontenerze. Test po stronie
   użytkownika.

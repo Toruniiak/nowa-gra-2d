@@ -22,9 +22,14 @@ constexpr float kMaxMovePerTick = 6.0f;
 // positions — only client-provided *intentions*, which are validated here.
 class World {
  public:
-  EntityId addEntity() {
+  EntityId addEntity() { return addEntity(0.0f, 0.0f); }
+
+  // Spawns an entity at a specific position — used when a client selects a
+  // persisted character (see net/server.hpp CHAR_SELECT), so it resumes
+  // where it last saved rather than always at the origin.
+  EntityId addEntity(float x, float y) {
     const EntityId id = nextId_++;
-    entities_[id] = Entity{};
+    entities_[id] = Entity{x, y};
     dirty_.push_back(id);
     return id;
   }

@@ -14,6 +14,34 @@ Inspiracja mechaniką gatunku (Tibia i klasyczne MMORPG) — bez kopiowania
 sprite'ów, map, nazw chronionych, kodu. Każdy nowy asset/nazwa/system
 przechodzi tę kontrolę przy tworzeniu, nie po fakcie.
 
+## Kamera i perspektywa (decyzja użytkownika, 2026-09-26)
+
+**Gra jest 2D z pochyloną kamerą — widok izometryczny w stylu Diablo 2**
+(użytkownik podał jako przykład serię Diablo). Nie widok prosto z góry jak
+klasyczna Tibia, i nie pełne 3D jak Diablo 3/4.
+
+Konsekwencje techniczne (ustalone, do realizacji w Phase 5):
+
+- **Serwer bez zmian.** Świat logicznie pozostaje płaską siatką (x, y);
+  pozycje, kolizje, zasięg i walidacja ruchu liczone są na tej płaszczyźnie.
+  Pochylenie to wyłącznie sposób rysowania — transformacja świat → ekran
+  po stronie klienta. Protokół się nie zmienia.
+- **Klient:** Godot 4.3 ma natywny tryb izometryczny (`TileMapLayer` z
+  `TileSet.tile_shape = ISOMETRIC`) i sortowanie po głębokości
+  (`y_sort_enabled`), więc postacie zasłaniają się poprawnie za drzewami/
+  budynkami. Kamera (`Camera2D`) podąża za graczem — dziś jej nie ma
+  (KNOWN_ISSUES.md).
+- **Sterowanie:** "góra" na joysticku/padzie musi odpowiadać "górze ekranu",
+  więc wektor wejścia jest obracany z przestrzeni ekranu do przestrzeni
+  świata przed wysłaniem `MOVE`.
+- **Grafika:** sprite'y rysowane pod kątem izometrycznym, zwykle w **8
+  kierunkach** (nie 4) — to znacząco zwiększa liczbę klatek do przygotowania
+  per animacja. Kafle w proporcji 2:1 (np. 64×32 px).
+
+Otwarte (do decyzji przy Phase 5, nie zgadywane tutaj): dokładny kąt/
+proporcja kafli, rozmiar kafla i postaci w pikselach, 8 vs 4 kierunki
+animacji na start, ręcznie rysowane vs. renderowane z modeli 3D sprite'y.
+
 ## Postać gracza (fundament, patrz Phase 6)
 
 Statystyki: HP, Mana, stamina, poziom, EXP, atrybuty podstawowe. Wygląd:

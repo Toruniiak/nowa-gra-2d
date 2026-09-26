@@ -29,7 +29,8 @@ server/src/
   entity/               gracze, potwory, NPC — wspólny bazowy typ encji
   combat/               (Phase 7) system walki, oddzielony od world/, żeby
                         dodawanie mechanik nie wymagało zmian w pętli świata
-  db/                   (Phase 4+) warstwa dostępu do bazy — konta, postacie
+  db/                   (Phase 4, jest) SQLite: konta, postacie, pozycje
+  auth/                 (Phase 4, jest) hashowanie haseł (scrypt, OpenSSL)
   data/                  (Phase 9+) definicje itemów/potworów/questów jako dane
                         (JSON/podobny format), NIE hardkodowane w kodzie C++
 ```
@@ -58,8 +59,18 @@ w okolicy 10-20 Hz — dokładna wartość do ustalenia empirycznie przy
 pierwszych testach opóźnień, nie zgadywana z góry). Każdy tick: odbierz
 wejście od klientów → zwaliduj → zaktualizuj stan świata → rozeslij delty.
 
-## Decyzje jeszcze nieподjęte (nie zgaduj, nie hardkoduj)
+## Decyzje podjęte w Phase 4 (2026-09-26)
 
-- Format zapisu danych świata/graczy (baza SQL vs. pliki) — Phase 4.
+- Dane graczy: **SQLite** (`server/src/db/`), dostęp wyłącznie przez
+  parametryzowane zapytania. Uzasadnienie: TECH_STACK.md.
+- Transport: **TLS** (`server/src/net/tls.*`), klient zawsze weryfikuje serwer.
+- Tożsamość: konto (login + scrypt) → postacie konta. `entity_id` w świecie
+  jest ulotny; trwały jest `character id`. Serwer sprawdza własność każdego
+  id podanego przez klienta (`Database::getOwnedCharacter`).
+- Klient: ekran logowania/wyboru postaci (`client/scripts/login_ui.gd`) to
+  czysta prezentacja — tylko przekazuje wybory do `net_client.gd`.
+
+## Decyzje jeszcze niepodjęte (nie zgaduj, nie hardkoduj)
+
 - Format definicji itemów/potworów/questów (JSON? własny DSL?) — Phase 9-10.
 - TCP vs UDP dla ruchu w czasie rzeczywistym — patrz NETWORKING.md.

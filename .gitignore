@@ -30,7 +30,20 @@ client/*.apk
 client/*.aab
 client/builds/
 client/android/
+# Pinned dev-server certificate: public (not secret), but generated per
+# environment together with server/certs/ — see docs/BUILD.md.
+client/certs/
 
 # Android SDK/NDK if ever installed inside the repo tree by mistake
 *.keystore
+
+# Server: TLS private keys/certs (dev or real — never commit either) and
+# the runtime SQLite database (accounts/characters, local dev data only)
+server/certs/
+*.pem
+*.key
+server/*.db
+server/*.db-journal
+server/*.db-wal
+server/*.db-shm
 

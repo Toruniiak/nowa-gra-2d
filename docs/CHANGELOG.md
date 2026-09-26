@@ -88,3 +88,45 @@
   brak GUI). Wymaga maszyny użytkownika. Android SDK/JDK/Godot binary nie
   są częścią repo (żyją w efemerycznym kontenerze) — `docs/BUILD.md` ma
   pełną procedurę do powtórzenia w nowej sesji.
+
+## 2026-09-26 (5) — Phase 4: Login & Characters
+
+- **Serwer:** TLS 1.2+ (OpenSSL) na wszystkich połączeniach; konta
+  (`REGISTER`/`LOGIN`, scrypt + sól, porównanie w stałym czasie);
+  postacie (`CHAR_LIST`/`CHAR_CREATE`/`CHAR_SELECT`) z kontrolą własności;
+  persystencja w SQLite (nowe `server/src/db/`, `server/src/auth/`,
+  `server/src/net/tls.*`); snapshot świata przy wejściu; zapis pozycji przy
+  rozłączeniu i przy łagodnym zamknięciu (SIGINT/SIGTERM).
+- **Bezpieczeństwo (znalezione przeglądem i poprawione przed commitem):**
+  stan świata (`POS`/`LEAVE`) szedł do każdego połączenia TLS, także bez
+  konta → teraz tylko do graczy w świecie; throttling uwierzytelniania
+  (1 próba/s, 5 porażek → rozłączenie), bo scrypt blokuje jednowątkową pętlę
+  gry; limity bufora wejścia (1024 B) i wyjścia (64 KB); 60 s na zalogowanie
+  (slowloris); odrzucanie deskryptorów ≥ `FD_SETSIZE` (zapis poza tablicą w
+  `select()`); `REGISTER` sprawdza zajętość loginu przed liczeniem scrypt.
+- **Realne błędy znalezione testami i naprawione:**
+  1. `SIGPIPE` przy zapisie do zamkniętego gniazda zabijał cały serwer.
+  2. Nieczyszczona kolejka błędów OpenSSL (`ERR_clear_error`): realny błąd
+     jednego połączenia sprawiał, że `SSL_get_error()` dla *innych*,
+     zdrowych połączeń zwracał `SSL_ERROR_SSL` → kaskadowe rozłączanie.
+  3. Self-move-assignment w `removeClient()` przy usuwaniu ostatniego
+     elementu wektora (zabezpieczone; okazało się nie być przyczyną nr 2,
+     ale jest niebezpieczne dla `std::string`).
+- **Fałszywe tropy (opisane, żeby nie powtarzać):** "zawieszanie" testów to
+  blokujący `recv()` z timeoutem w Pythonie przy TLS 1.3 (realne czasy
+  serwera: REGISTER ~50 ms, reszta < 2 ms); dziwne kody wyjścia 144 to
+  `pkill -f "build/server"` zabijający własną powłokę (wzorzec pasował do
+  jej linii poleceń).
+- **Klient Godot:** `net_client.gd` przepisany na TLS (StreamPeerTLS) z
+  zawsze weryfikowanym certyfikatem — tryb bez weryfikacji usunięty
+  (`client_unsafe()` i tak nie działał w 4.3); nowy ekran logowania/
+  rejestracji/wyboru postaci (`login_ui.gd`) + pole adresu serwera (bez
+  tego APK na telefonie łączyłby się z samym sobą — dotyczyło też APK z
+  Phase 2); auto-logowanie z linii poleceń do testów.
+- **Testy:** `tools/test_client.py` przepisany (34 asercje, zweryfikowany
+  TLS); nowe harnessy `tools/godot_reconnect_test.gd`,
+  `tools/godot_screenshot.gd`. Pierwsze zrzuty ekranu gry (Xvfb).
+- **Decyzja użytkownika:** gra 2D z pochyloną kamerą (izometria w stylu
+  Diablo 2) — zapisane w GAME_DESIGN.md, realizacja w Phase 5.
+- **Nieukończone:** żadna część nie była testowana na telefonie ani przez
+  człowieka; znane ograniczenia w KNOWN_ISSUES.md.

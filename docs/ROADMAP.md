@@ -13,7 +13,7 @@ działającej sieci i kont.
       (anty-cheat na pojedynczy pakiet), zweryfikowane end-to-end (realny
       serwer + realny headless klient Godot + skrypt testowy z próbą
       cheatowania). *Zrobione — ale patrz KNOWN_ISSUES.md: brak rate-limitu
-      pakietów, brak szyfrowania, format tekstowy do rewizji.*
+      `MOVE`, format tekstowy do rewizji. (Szyfrowanie: dodane w Phase 4.)*
 - [x] **Phase 2 — Android Client (eksport).** Instalacja Android SDK,
       konfiguracja eksportu Godota, pierwszy `.apk`, weryfikacja zawartości
       (manifest, podpis, integralność, assety) — *zrobione i zweryfikowane:
@@ -21,9 +21,12 @@ działającej sieci i kont.
       urządzeniu w tym środowisku (brak KVM/GUI, patrz TECH_STACK.md) —
       test na prawdziwym urządzeniu zostaje po stronie użytkownika, zgodnie
       z zakresem tej fazy zdefiniowanym wyżej.
-- [ ] **Phase 4 — Login & Characters.** Rejestracja/logowanie, wybór/
-      tworzenie postaci, persystencja (baza danych — decyzja SQL na tym
-      etapie), reconnect.
+- [x] **Phase 4 — Login & Characters.** Rejestracja/logowanie, wybór/
+      tworzenie postaci, persystencja (SQLite), reconnect, szyfrowany
+      transport (TLS) — *zrobione i zweryfikowane automatycznie: 2026-09-26*
+      (34 asercje protokołu/bezpieczeństwa + prawdziwy klient Godot). **Nie
+      przetestowane jeszcze przez człowieka ani na telefonie** — patrz
+      PROJECT_STATE.md i KNOWN_ISSUES.md (m.in. scrypt w wątku gry).
 - [ ] **Phase 5 — First World.** Pierwsza prawdziwa mapa (nie placeholder),
       system modułowy map (patrz GAME_DESIGN.md), tile-based, dekoracje.
 - [ ] **Phase 6 — Character Systems.** HP/Mana/EXP/level/statystyki,
@@ -48,7 +51,6 @@ działającej sieci i kont.
 
 ## Aktualna faza
 
-**Phase 4 (Login & Characters)** — Phase 2 zamknięta (w zakresie
-możliwym z tego środowiska; test na fizycznym urządzeniu zostaje po
-stronie użytkownika, patrz PROJECT_STATE.md). Phase 4 jeszcze nie
-zaczęta.
+**Phase 5 (First World)** — jeszcze nie zaczęta. Phase 2 i 4 zamknięte w
+zakresie możliwym z tego środowiska; test na telefonie i ręczny test ekranu
+logowania zostają po stronie użytkownika (PROJECT_STATE.md).

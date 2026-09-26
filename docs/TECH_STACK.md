@@ -6,13 +6,17 @@ Stan faktyczny (nie plan, nie życzenia) — aktualizuj przy każdej zmianie sto
 
 - **Język:** C++20
 - **Build:** CMake ≥ 3.20
-- **Sieć:** POSIX sockets (TCP), bez zewnętrznych bibliotek na starcie — świadomie,
-  żeby nie ciągnąć zależności przed ustaleniem realnych wymagań (liczba graczy,
-  częstotliwość tick). Do rozważenia przy skalowaniu: ASIO/Boost.Asio albo ENet
-  (UDP) dla ruchu w czasie rzeczywistym — decyzja odłożona, patrz NETWORKING.md.
-- **Baza danych:** niezdecydowana. Kandydaci: PostgreSQL (transakcje, dojrzałe
-  narzędzia) lub SQLite na etapie prototypu (zero-config). Decyzja przy Phase 4
-  (Login & Characters), nie wcześniej.
+- **Sieć:** POSIX sockets (TCP) + **TLS 1.2+ (OpenSSL)**, pętla `select()`,
+  jeden wątek. Do rozważenia przy skalowaniu: poll/epoll, ASIO albo ENet (UDP)
+  dla ruchu w czasie rzeczywistym — decyzja odłożona, patrz NETWORKING.md.
+- **Baza danych:** **SQLite 3** (zdecydowane w Phase 4, 2026-09-26). Plik
+  osadzony w procesie serwera, bez osobnej usługi do uruchamiania/zabezpieczania
+  na tym etapie; wolumen danych (konta + pozycje postaci) nie uzasadnia
+  osobnego procesu DB. Do rewizji (np. PostgreSQL) dopiero przy realnej
+  potrzebie współbieżności/skali — nie wcześniej.
+- **Hasła:** scrypt (N=16384, r=8, p=1, sól 16 B/konto) z OpenSSL —
+  ~50 ms/hash zmierzone w tym kontenerze. Argon2id (pierwszy wybór OWASP)
+  odrzucony tylko dlatego, że wymagałby drugiej biblioteki krypto.
 
 ## Klient
 
@@ -34,17 +38,21 @@ Stan faktyczny (nie plan, nie życzenia) — aktualizuj przy każdej zmianie sto
 
 - Ubuntu 24.04, brak `/dev/kvm` → **brak emulatora Androida w tym środowisku**.
   Test na urządzeniu/emulatorze wymaga maszyny użytkownika.
-- Android SDK/NDK: **nie zainstalowane** — `dl.google.com` był zablokowany
-  przez politykę sieciową w momencie audytu (2026-09-26). Wymaga zmiany
-  ustawień środowiska przed pierwszym buildem `.apk`. Stan aktualny: patrz
-  PROJECT_STATE.md.
-- Godot 4.3 (headless, linux.x86_64) zainstalowany lokalnie w kontenerze do
-  walidacji projektu klienta (import, brak błędów skryptów). Nie jest to
-  narzędzie GUI — nie renderuje obrazu w tym środowisku.
+- Android SDK, JDK 17, Godot 4.3 + export templates: instalowane w kontenerze
+  (efemeryczne, nie w repo) — procedura w BUILD.md.
+- Renderowanie klienta bez monitora działa przez `xvfb-run` + Mesa (programowy
+  OpenGL) — używane do zrzutów ekranu (`tools/godot_screenshot.gd`). To nie
+  zastępuje testu na telefonie.
 
 ## Zależności zewnętrzne
 
-Brak na dzień pisania tego pliku, poza samym Godot Engine i standardową
-biblioteką C++. Każda nowa zależność (biblioteka sieciowa, ORM, biblioteka
-kryptograficzna) wymaga wpisu tutaj z uzasadnieniem — nie dodawaj bibliotek
-"na wszelki wypadek".
+Każda nowa zależność wymaga wpisu tutaj z uzasadnieniem — nie dodawaj
+bibliotek "na wszelki wypadek".
+
+| Zależność | Gdzie | Od kiedy | Dlaczego |
+|---|---|---|---|
+| Godot Engine 4.3 | klient | Phase 1 | patrz wyżej |
+| OpenSSL 3 (`libssl-dev`) | serwer | Phase 4 | szyfrowany transport (TLS) wymagany przed pierwszym kontem (CLAUDE.md, KNOWN_ISSUES.md) + scrypt do haseł. Własna kryptografia wykluczona. |
+| SQLite 3 (`libsqlite3-dev`) | serwer | Phase 4 | persystencja kont i postaci, patrz wyżej |
+
+Testowane wersje (ten kontener): OpenSSL 3.0.13, SQLite 3.45.1.

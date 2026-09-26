@@ -2,40 +2,89 @@
 
 ## Serwer (C++)
 
+Wymagania: kompilator C++20 (g++/clang++), CMake ≥ 3.20, pkg-config,
+**OpenSSL 3** i **SQLite 3** (Ubuntu/Debian: `apt install libssl-dev
+libsqlite3-dev pkg-config`) — uzasadnienie w TECH_STACK.md.
+
 ```bash
 cd server
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug   # albo Release
-cmake --build build
-./build/server [port]     # domyślny port: 7777
+cmake --build build                            # musi przejść bez ostrzeżeń
 ```
 
-Wymagania: kompilator C++20 (g++/clang++), CMake ≥ 3.20. Brak zewnętrznych
-zależności (patrz TECH_STACK.md) — tylko POSIX sockets.
+Certyfikat TLS dla serwera dev (self-signed, CN=localhost). **Nigdy nie
+commituj** — `server/certs/` jest w `.gitignore`:
+
+```bash
+mkdir -p server/certs
+openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -subj "/CN=localhost" \
+  -keyout server/certs/server.key -out server/certs/server.crt
+```
+
+Uruchomienie (z katalogu `server/`, domyślne ścieżki są względne):
+
+```bash
+./build/server [port] [db_path] [cert_path] [key_path]
+# domyślnie: 7777 game.db certs/server.crt certs/server.key
+```
+
+Baza SQLite tworzy się sama przy pierwszym starcie. `Ctrl+C`/`SIGTERM` =
+łagodne zamknięcie: serwer zapisuje pozycje wszystkich graczy online.
 
 ## Klient (Godot)
 
-Wymaga Godot 4.3 (edytor lub headless binary).
+Wymaga Godot 4.3. Klient **zawsze weryfikuje** certyfikat serwera — dla
+serwera dev skopiuj jego publiczny certyfikat do klienta (trafia też do APK;
+`client/certs/` jest w `.gitignore`, bo każdy generuje własny):
 
 ```bash
-godot4 --path client --editor        # otwiera edytor (wymaga GUI)
-godot4 --headless --path client --import   # walidacja bez GUI (CI-friendly)
-godot4 --headless --path client --quit-after 60 -- --server-host=127.0.0.1 --server-port=7777
+mkdir -p client/certs && cp server/certs/server.crt client/certs/dev_server.crt
 ```
-
-Domyślny host/port: `127.0.0.1:7777` — zmienialny w `World.tscn` (export
-vars `server_host`/`server_port`) albo argumentami `--server-host=`/
-`--server-port=` (patrz `client/scripts/world.gd`).
-
-## Test end-to-end (bez GUI, weryfikuje protokół)
 
 ```bash
-./server/build/server 7788 &
-python3 tools/test_client.py 7788
+godot4 --path client --editor                 # edytor (wymaga GUI)
+godot4 --headless --path client --import      # walidacja bez GUI
+godot4 --headless --path client --check-only --script res://scripts/world.gd   # parse-check skryptu
 ```
 
-`tools/test_client.py` to skrypt diagnostyczny (nie część gry) symulujący
-klienta — wysyła normalny ruch, próbę "cheatowania" (za duży skok) i
-zniekształcone dane, sprawdzając że serwer poprawnie waliduje/nie crashuje.
+Argumenty dev (po `--`, patrz `client/scripts/world.gd`): `--server-host=`,
+`--server-port=`, `--tls-cert=<plik PEM>`, `--tls-cn=<oczekiwana nazwa>`,
+oraz automatyczne logowanie do testów: `--user= --password= --character=
+[--register]`. `--password=` jest widoczne dla innych procesów — tylko dev.
+
+Na telefonie: wpisz adres PC w sieci lokalnej (np. `192.168.1.10:7777`) w
+polu adresu na ekranie logowania i naciśnij "Połącz ponownie". Certyfikat
+dev ma CN=localhost i klient sprawdza właśnie tę nazwę — to działa także
+przy łączeniu po IP.
+
+## Testy end-to-end
+
+Serwer + protokół (34 asercje: konta, postacie, anty-cheat, persystencja,
+bezpieczeństwo — patrz nagłówek skryptu):
+
+```bash
+cd server && ./build/server 7788 test.db certs/server.crt certs/server.key &
+cd .. && python3 tools/test_client.py 7788 server/test.db
+```
+
+Prawdziwy klient Godot przeciw serwerowi (headless, auto-logowanie):
+
+```bash
+godot4 --headless --path client --max-fps 60 --quit-after 240 -- \
+  --server-port=7788 --register --user=test_user --password="haslo123" --character="Bohater"
+# oczekiwane: "Entered world as entity N" i "Local entity N spawned at (x, y)"
+```
+
+Ścieżka "zły adres → wpisanie poprawnego → Połącz ponownie" na prawdziwej
+scenie: `tools/godot_reconnect_test.gd` (instrukcja w nagłówku pliku).
+
+Zrzut ekranu prawdziwego klienta bez monitora (Xvfb + programowy OpenGL):
+`tools/godot_screenshot.gd` (instrukcja w nagłówku pliku).
+
+Uwaga dla skryptów testowych w Pythonie: czytaj gniazdo TLS nieblokująco
+(`select`), nie blokującym `recv()` z timeoutem — przy TLS 1.3 potrafi on
+przespać cały timeout mimo że odpowiedź już przyszła (patrz komentarz w
+`tools/test_client.py`).
 
 ## Android (`.apk`)
 
@@ -90,6 +139,11 @@ nie działa w 4.3, zwraca ten sam "pusty" błąd konfiguracji):
 export ANDROID_HOME=/opt/android-sdk   # ścieżka SDK musi być też w Editor Settings
 godot4 --headless --path client --export-debug "Android" client/builds/android/nowa-gra-2d-debug.apk
 ```
+
+Preset ma `include_filter="certs/*.crt"` — przypięty certyfikat dev
+(`client/certs/dev_server.crt`, patrz sekcja Klient) trafia do APK jako
+`assets/certs/dev_server.crt`. Bez niego APK połączy się tylko z serwerem
+z certyfikatem od publicznego CA.
 
 Weryfikacja zawartości `.apk` (manifest, podpis, integralność archiwum —
 patrz PROJECT_STATE.md dla pełnego wyniku):
