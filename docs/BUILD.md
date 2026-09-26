@@ -61,6 +61,26 @@ polu adresu na ekranie logowania i naciśnij "Połącz ponownie". Certyfikat
 dev ma CN=localhost i klient sprawdza właśnie tę nazwę — to działa także
 przy łączeniu po IP.
 
+## Szybkie uruchomienie do testów (plik na Pulpit)
+
+`tools/launcher/` zawiera gotowe "odpalacze", które przy każdym uruchomieniu
+pobierają najnowszą wersję z GitHuba, budują serwer, startują go, uruchamiają
+grę, a po zamknięciu okna gry łagodnie zatrzymują serwer (zapis pozycji).
+
+- **Windows:** skopiuj `tools/launcher/graj.bat` na Pulpit. Jednorazowo
+  potrzebne: Git for Windows oraz WSL z Ubuntu (`wsl --install -d Ubuntu`) —
+  serwer używa gniazd POSIX, więc działa w WSL (`serwer_wsl.sh`). Godot 4.3
+  pobiera się sam do `%LOCALAPPDATA%\nowa-gra-2d-tools`. Gra w
+  `%USERPROFILE%\nowa-gra-2d`. **Nieprzetestowane na prawdziwym Windowsie**
+  (brak Windowsa w środowisku deweloperskim) — przetestowana tylko część WSL
+  (`serwer_wsl.sh`) na Linuksie.
+- **Linux/macOS:** skopiuj `tools/launcher/graj.sh` na Pulpit
+  (`chmod +x`). Przetestowane na Linuksie (świeży klon, aktualizacja,
+  nieaktualny pidfile, zamknięcie gry). macOS — nieprzetestowane.
+
+Za pierwszym razem GitHub może poprosić o zalogowanie (repo prywatne), a
+instalacja bibliotek — o hasło do Linuksa/WSL.
+
 ## Testy end-to-end
 
 Serwer + protokół (34 asercje: konta, postacie, anty-cheat, persystencja,

@@ -1,0 +1,4 @@
+# Shell scripts must keep LF even when cloned on Windows (bash in WSL fails
+# on CRLF); .bat must be CRLF for cmd.exe labels/goto to work reliably.
+*.sh  text eol=lf
+*.bat text eol=crlf

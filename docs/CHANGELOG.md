@@ -163,3 +163,15 @@
   `tools/godot_walk_test.gd`; regresja logowania/reconnectu przechodzi.
 - **Znalezione przy okazji:** ponownie `pkill`/`pgrep -f` dopasowywał się do
   własnej powłoki (ubijanie i start serwera w jednym poleceniu) — rozdzielone.
+
+## 2026-09-26 (8)
+
+- **Odpalacz gry do testów** (`tools/launcher/`): `graj.bat` (Windows, serwer
+  przez WSL — `serwer_wsl.sh`) i `graj.sh` (Linux/macOS). Za każdym razem:
+  `git pull`, build serwera, start serwera, gra, łagodne zatrzymanie serwera.
+  Opis: BUILD.md. `graj.sh` i `serwer_wsl.sh` przetestowane na Linuksie;
+  `graj.bat` **nieprzetestowany** (brak Windowsa tutaj).
+- `.gitattributes`: `*.sh` zawsze LF, `*.bat` zawsze CRLF (inaczej skrypty
+  psują się po checkoutcie na innym systemie).
+- Znalezione przy teście: nieaktualny pidfile mógł ubić niezwiązany proces
+  o tym samym PID — odpalacz sprawdza teraz, że PID to nasz serwer.

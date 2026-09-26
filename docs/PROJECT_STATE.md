@@ -55,6 +55,10 @@ Czytaj go pierwszy.
   3 uszkodzone mapy → serwer odmawia startu z komunikatem, prawdziwy klient
   Godot chodzi (`tools/godot_walk_test.gd`: 5 kroków w 1,2 s, płynna
   animacja), zrzut ekranu przez Xvfb, APK zawiera mapę i grafikę.
+- **Odpalacz do testów (`tools/launcher/`)** — pobiera najnowszą wersję,
+  buduje, startuje serwer i grę (BUILD.md). `graj.sh` przetestowany na
+  Linuksie; `graj.bat` (Windows + WSL) **nieprzetestowany** — pierwszy test
+  po stronie użytkownika.
 
 ## Co NIE działa / nie istnieje jeszcze
 
@@ -63,7 +67,7 @@ Czytaj go pierwszy.
 - Brak potworów, przedmiotów, wielu map/pięter; grafika to pierwsza wersja z generatora.
 - Brak combat, statystyk, itemów, questów, NPC, ekonomii, PvP, guildii.
 - Znane problemy bezpieczeństwa/skali (m.in. scrypt blokuje wątek gry,
-  brak limitu `MOVE` na tick): KNOWN_ISSUES.md.
+  KNOWN_ISSUES.md.
 
 ## Decyzja projektowa od użytkownika: kamera
 
