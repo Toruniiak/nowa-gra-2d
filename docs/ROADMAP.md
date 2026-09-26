@@ -14,12 +14,13 @@ działającej sieci i kont.
       serwer + realny headless klient Godot + skrypt testowy z próbą
       cheatowania). *Zrobione — ale patrz KNOWN_ISSUES.md: brak rate-limitu
       pakietów, brak szyfrowania, format tekstowy do rewizji.*
-- [ ] **Phase 2 — Android Client (eksport).** Instalacja Android SDK/NDK w
-      środowisku (blokada: `dl.google.com`, patrz PROJECT_STATE.md),
+- [x] **Phase 2 — Android Client (eksport).** Instalacja Android SDK,
       konfiguracja eksportu Godota, pierwszy `.apk`, weryfikacja zawartości
-      (manifest, assety) — **bez** testu na urządzeniu w tym środowisku
-      (brak KVM/GUI, patrz TECH_STACK.md). Test na prawdziwym urządzeniu:
-      po stronie użytkownika.
+      (manifest, podpis, integralność, assety) — *zrobione i zweryfikowane:
+      2026-09-26, patrz PROJECT_STATE.md i CHANGELOG.md.* **Bez** testu na
+      urządzeniu w tym środowisku (brak KVM/GUI, patrz TECH_STACK.md) —
+      test na prawdziwym urządzeniu zostaje po stronie użytkownika, zgodnie
+      z zakresem tej fazy zdefiniowanym wyżej.
 - [ ] **Phase 4 — Login & Characters.** Rejestracja/logowanie, wybór/
       tworzenie postaci, persystencja (baza danych — decyzja SQL na tym
       etapie), reconnect.
@@ -47,5 +48,7 @@ działającej sieci i kont.
 
 ## Aktualna faza
 
-**Phase 2 (Android Client)** — zablokowana na decyzji użytkownika o
-ustawieniach sieci środowiska. Patrz PROJECT_STATE.md dla stanu na żywo.
+**Phase 4 (Login & Characters)** — Phase 2 zamknięta (w zakresie
+możliwym z tego środowiska; test na fizycznym urządzeniu zostaje po
+stronie użytkownika, patrz PROJECT_STATE.md). Phase 4 jeszcze nie
+zaczęta.

@@ -42,3 +42,49 @@
 - Faza 2 (Android Client) pozostaje zablokowana. Nie zainstalowano
   Android SDK, nie skonfigurowano eksportu, nie zbudowano `.apk`.
   Nieukończone.
+
+## 2026-09-26 (4)
+
+- Sieć odblokowana przez użytkownika (środowisko "AZONERA MMORPG 2D") —
+  zweryfikowano realnym `curl`: `dl.google.com` i pozostałe hosty potrzebne
+  do Android/Gradle są dostępne.
+- **Phase 2 (Android Client) — pierwszy `.apk` zbudowany i zweryfikowany.**
+  Zainstalowano w kontenerze: Android SDK cmdline-tools + `platform-tools`
+  + `build-tools;34.0.0` + `platforms;android-34`; Godot 4.3.stable
+  (headless editor + export templates, z GitHub Releases —
+  `downloads.tuxfamily.org/godotengine/4.3/...` zwraca 404 dla tej wersji);
+  JDK 17 (`openjdk-17-jdk-headless`, obok istniejącego JDK 21).
+- Napotkano i naprawiono dwa realne błędy/pułapki Godota 4.3 (opisane
+  ze źródłem w `docs/BUILD.md`):
+  1. `godot4 --headless --install-android-build-template` wisi bez końca w
+     środowisku bez GUI (`ProgressDialog` nigdy nie sygnalizuje końca) —
+     odtworzono ręcznie identyczny efekt (`.build_version`, `.gdignore`,
+     rozpakowanie `android_source.zip`), zweryfikowane przeciwko źródłu
+     silnika (`export_template_manager.cpp`).
+  2. Eksport failuje z **pustym** komunikatem błędu, gdy projekt nie ma
+     `rendering/textures/vram_compression/import_etc2_astc=true` — dodano
+     to ustawienie do `client/project.godot` (wymagane i poprawne dla
+     eksportu mobilnego, nie obejście).
+  3. Gradle build Androida w Godot 4.3 wymaga dokładnie JDK 17 (nie 21) —
+     skonfigurowano osobny JDK 17 w Editor Settings.
+- Dodano `client/export_presets.cfg` (preset "Android", Gradle build,
+  `arm64-v8a`, permissions ograniczone do `INTERNET`+`ACCESS_NETWORK_STATE`
+  — dokładnie to, czego klient używa, nic więcej). Usunięto go z
+  `.gitignore` — to realna, przenośna konfiguracja projektu (bez lokalnych
+  ścieżek keystore), wartość do zachowania w repo.
+- Weryfikacja `.apk` (`client/builds/android/nowa-gra-2d-debug.apk`,
+  74 849 033 B, powtarzalny rozmiar w dwóch niezależnych buildach):
+  `aapt dump badging` — package `com.novagra2d.client`, minSdk 24,
+  targetSdk 34, `native-code: arm64-v8a`; `apksigner verify` — podpisany
+  (v2 scheme); `unzip -t` — brak błędów integralności; zawartość `assets/`
+  potwierdza obecność realnych scen/skryptów (`World.tscn`,
+  `PlayerEntity.tscn`, `world.gdc`, `net_client.gdc`, `player_entity.gdc`,
+  `gamepad_status.gdc`).
+- Regresja: `godot4 --headless --path client --import` (exit 0), build
+  serwera C++ bez ostrzeżeń, `tools/test_client.py` (protokół end-to-end)
+  — wszystko przechodzi bez zmian po modyfikacjach klienta.
+- **Nieukończone:** instalacja/test `.apk` na fizycznym urządzeniu Android
+  lub emulatorze — fizycznie niemożliwe w tym kontenerze (brak `/dev/kvm`,
+  brak GUI). Wymaga maszyny użytkownika. Android SDK/JDK/Godot binary nie
+  są częścią repo (żyją w efemerycznym kontenerze) — `docs/BUILD.md` ma
+  pełną procedurę do powtórzenia w nowej sesji.
