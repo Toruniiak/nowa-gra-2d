@@ -50,7 +50,7 @@ bool isValidUsername(const std::string& s) {
 
 std::string posLine(EntityId id, const Entity& e) {
   return "POS " + std::to_string(id) + " " + std::to_string(e.pos.x) + " " + std::to_string(e.pos.y) +
-         " " + dirToChar(e.facing);
+         " " + dirToString(e.facing);
 }
 
 bool isValidPassword(const std::string& s) { return s.size() >= 6 && s.size() <= 128; }
@@ -441,7 +441,8 @@ void TcpServer::handleCharSelect(Client& client, std::istringstream& args, World
   client.entityId = world.addEntity({static_cast<int>(std::lround(record->x)),
                                      static_cast<int>(std::lround(record->y))});
   sendLine(client, "WELCOME " + std::to_string(client.entityId) + " " +
-                       std::to_string(std::chrono::milliseconds(kStepDuration).count()));
+                       std::to_string(std::chrono::milliseconds(kStepDuration).count()) + " " +
+                       std::to_string(std::chrono::milliseconds(kDiagonalStepDuration).count()));
 
   // Snapshot of everyone already in the world: broadcastDirty() only sends
   // entities that changed this tick, so without this a joining (or
@@ -456,10 +457,11 @@ void TcpServer::handleCharSelect(Client& client, std::istringstream& args, World
 void TcpServer::handleStep(Client& client, std::istringstream& args, World& world) {
   if (client.entityId == 0) return;  // not playing yet
 
-  std::string dir;
+  std::string dir, extra;
   args >> dir;
-  const auto d = dir.size() == 1 ? dirFromChar(dir[0]) : std::nullopt;
-  if (!d) return;
+  const auto d = dirFromString(dir);
+  // Exactly one token: "STEP N E" is not quietly read as "N" (nor as NE).
+  if (!d || (args >> extra)) return;
   world.queueStep(client.entityId, *d);
   world.update(Clock::now());  // an idle entity steps now, not next tick
 }

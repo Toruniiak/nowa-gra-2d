@@ -48,7 +48,8 @@ Czytaj go pierwszy.
   (`client/data/maps/start.json`: wioska z domem, jezioro, drogi, ruiny, las
   na granicy) z grafiką z generatora `tools/art/gen_tileset.py` (styl wg CC0
   wzoru Summer Engine, rysowana od zera). Serwer wczytuje tę samą mapę,
-  pozycje są na kaflach, ruch `STEP N/E/S/W` z czasem kroku 250 ms, kolejką
+  pozycje są na kaflach, ruch w **8 kierunkach** (`STEP N…NW`; prosto
+  250 ms, skos 354 ms, bez ścinania rogów), kolejką
   jednego kroku (spam nie przyspiesza), kolizjami z mapą i między graczami.
   Zweryfikowane: `tools/test_client.py` (m.in. blokowanie przez gracza,
   limit prędkości, zatrzymanie na brzegu jeziora wg mapy, zapis kafla),
@@ -102,9 +103,7 @@ Sieć: `dl.google.com`, GitHub Releases, Maven/Gradle dostępne
 1. **Użytkownik:** zainstalować APK na telefonie, uruchomić serwer na PC
    (BUILD.md), wpisać adres PC na ekranie logowania, założyć konto i
    postać, poruszać się. Zgłosić, co nie działa / co jest niewygodne.
-2. **Phase 5 — First World** w stylu Tibii: ruch po kratkach (serwer +
-   protokół), mapa jako dane wspólne serwera i klienta, kamera za graczem,
-   pierwszy zestaw grafik (wybór źródeł: ASSET_PIPELINE.md). Przed startem ustalić z użytkownikiem otwarte
-   punkty z GAME_DESIGN.md (rozmiar kafla, 8 vs 4 kierunki, styl grafiki).
+2. **Reszta Phase 5:** wiele map/pięter i przejścia między nimi, kafle
+   przejściowe terenu, wirtualny joystick na telefon (ROADMAP.md).
 3. Przed jakimkolwiek publicznym serwerem: KNOWN_ISSUES.md — scrypt w
-   wątku roboczym, limit `MOVE`, prawdziwy certyfikat, backupy bazy.
+   wątku roboczym, prawdziwy certyfikat, backupy bazy.

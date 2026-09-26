@@ -3,7 +3,7 @@ extends SceneTree
 ## rendering (needs a display, e.g. xvfb-run) and saves a PNG of the
 ## viewport. Usage (from repo root):
 ##   xvfb-run -s "-screen 0 1280x1400x24" godot4 --path client \
-##     --rendering-driver opengl3 --script ../tools/godot_screenshot.gd -- \
+##     --rendering-driver opengl3 --script "$PWD"/tools/godot_screenshot.gd -- \
 ##     --shot=/abs/out.png [--wait-world] [world.gd args: --server-port=... --user=...]
 ## Without --wait-world the shot is taken on the login screen once the TLS
 ## connection is up; with it, after the local character entered the world.

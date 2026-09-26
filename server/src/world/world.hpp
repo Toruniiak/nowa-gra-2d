@@ -2,6 +2,8 @@
 
 #include <chrono>
 #include <optional>
+#include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -12,11 +14,16 @@ namespace game {
 using EntityId = int;
 using Clock = std::chrono::steady_clock;
 
-enum class Dir { North, East, South, West };
+enum class Dir { North, East, South, West, NorthEast, SouthEast, SouthWest, NorthWest };
 
 // Time one step takes. The client animates each step over the same duration
 // (sent in WELCOME), so movement looks continuous while staying on the grid.
 constexpr auto kStepDuration = std::chrono::milliseconds(250);
+// A diagonal step covers sqrt(2) tiles of distance, so it takes sqrt(2) times
+// longer (250 * 1.4142 = 353.6): walking diagonally is not a shortcut.
+constexpr auto kDiagonalStepDuration = std::chrono::milliseconds(354);
+
+bool isDiagonal(Dir d);
 
 struct Entity {
   TilePos pos;
@@ -54,6 +61,7 @@ class World {
  private:
   bool occupied(TilePos p) const;
   bool free(TilePos p) const { return map_.walkable(p) && !occupied(p); }
+  bool canStep(TilePos from, Dir dir) const;
   TilePos nearestFree(TilePos from) const;
   void markDirty(EntityId id);
 
@@ -63,7 +71,8 @@ class World {
   EntityId nextId_ = 1;
 };
 
-char dirToChar(Dir d);
-std::optional<Dir> dirFromChar(char c);
+// Protocol names: "N", "E", "S", "W", "NE", "SE", "SW", "NW".
+std::string dirToString(Dir d);
+std::optional<Dir> dirFromString(std::string_view s);
 
 }  // namespace game

@@ -8,7 +8,8 @@ cert_path (default server/certs/server.crt) is pinned: the connection is
 verified against it, exactly like the Godot client does.
 
 Covers: TLS handshake, grid movement (step duration, map walkability,
-players blocking tiles, step-spam speed limit), register/login (incl. rejected duplicate username and
+players blocking tiles, step-spam speed limit, 8 directions: diagonal
+step duration and no corner cutting past walls), register/login (incl. rejected duplicate username and
 wrong password), character create/select, movement + anti-cheat clamping,
 malformed input, disconnect/reconnect with persisted position, world
 snapshot on join, and the negative/security cases: a character cannot be
@@ -212,8 +213,11 @@ welcome_a = recv_lines(a)
 expect("A char select", welcome_a, "WELCOME")
 welcome_line = next(l for l in welcome_a if l.startswith("WELCOME")).split()
 entity_a = welcome_line[1]
-check("WELCOME carries step duration", len(welcome_line) == 3 and welcome_line[2].isdigit(), welcome_line)
+check("WELCOME carries step + diagonal step duration",
+      len(welcome_line) == 4 and welcome_line[2].isdigit() and welcome_line[3].isdigit(), welcome_line)
 step_s = int(welcome_line[2]) / 1000.0
+diag_s = int(welcome_line[3]) / 1000.0
+check("diagonal step is sqrt(2) times longer", abs(diag_s - step_s * 2 ** 0.5) < 0.002, (step_s, diag_s))
 sx, sy = MAP["spawn"]
 expect("new character appears at map spawn", welcome_a, f"POS {entity_a} {sx} {sy} ")
 
@@ -277,6 +281,98 @@ a.sendall(b"STEP S\n")
 time.sleep(step_s + 0.05)
 ay += 1
 expect("A still alive after malformed input", recv_lines(b), f"POS {entity_a} {ax} {ay} S")
+
+# --- 8 directions ---
+DIRS = {"N": (0, -1), "E": (1, 0), "S": (0, 1), "W": (-1, 0),
+        "NE": (1, -1), "SE": (1, 1), "SW": (-1, 1), "NW": (-1, -1)}
+B_TILE = (sx, sy)
+
+
+def diagonal_ok(x, y, d):
+    """The server rule: target free + both side tiles walkable terrain."""
+    dx, dy = DIRS[d]
+    return (walkable(x + dx, y + dy) and (x + dx, y + dy) != B_TILE
+            and walkable(x + dx, y) and walkable(x, y + dy))
+
+
+def step_a(d, wait):
+    global ax, ay
+    a.sendall(f"STEP {d}\n".encode())
+    time.sleep(wait)
+    dx, dy = DIRS[d]
+    if any(l.startswith(f"POS {entity_a} {ax + dx} {ay + dy} ") for l in recv_lines(b, 0.05)):
+        ax, ay = ax + dx, ay + dy
+        return True
+    return False
+
+
+def walk_a_to(target):
+    """4-way BFS over the map (avoiding B), then walk it for real."""
+    from collections import deque
+    prev = {(ax, ay): None}
+    q = deque([(ax, ay)])
+    while q:
+        p = q.popleft()
+        if p == target:
+            break
+        for d in ("N", "E", "S", "W"):
+            n = (p[0] + DIRS[d][0], p[1] + DIRS[d][1])
+            if n not in prev and walkable(*n) and n != B_TILE:
+                prev[n] = (p, d)
+                q.append(n)
+    path = []
+    p = target
+    while prev.get(p):
+        p, d = prev[p]
+        path.append(d)
+    for d in reversed(path):
+        if not step_a(d, step_s + 0.03):
+            return False
+    return (ax, ay) == target
+
+
+a.sendall(b"STEP NN\nSTEP ne\nSTEP NEE\nSTEP N E\n")
+time.sleep(step_s + 0.1)
+expect_none("invalid direction tokens ignored", recv_lines(b), f"POS {entity_a} ")
+
+free_diag = [d for d in ("NE", "SE", "SW", "NW") if diagonal_ok(ax, ay, d)]
+check("test setup: a free diagonal next to A", bool(free_diag), (ax, ay))
+if free_diag:
+    d = free_diag[0]
+    dx, dy = DIRS[d]
+    back = {"NE": "SW", "SW": "NE", "SE": "NW", "NW": "SE"}[d]
+    a.sendall(f"STEP {d}\n".encode())
+    time.sleep(0.05)
+    a.sendall(f"STEP {back}\n".encode())  # queued behind the diagonal step
+    early = recv_lines(b, step_s + 0.02)   # ~0.3 s: past a straight step, before a diagonal one
+    expect(f"diagonal step {d} moves both axes, faces {d}", early, f"POS {entity_a} {ax + dx} {ay + dy} {d}")
+    expect_none("next step waits the full diagonal duration", early, f"POS {entity_a} {ax} {ay} ")
+    later = recv_lines(b, diag_s)
+    expect("queued diagonal step back executes after it", later, f"POS {entity_a} {ax} {ay} {back}")
+
+# Corner cutting: find a spot where the diagonal tile is free but a wall/tree/
+# water sits beside the diagonal; walk there and try to slip through.
+corner = None
+for y in range(MAP["height"]):
+    for x in range(MAP["width"]):
+        if not walkable(x, y) or (x, y) == B_TILE:
+            continue
+        for d in ("NE", "SE", "SW", "NW"):
+            dx, dy = DIRS[d]
+            if (walkable(x + dx, y + dy) and (x + dx, y + dy) != B_TILE
+                    and not (walkable(x + dx, y) and walkable(x, y + dy))):
+                dist = abs(x - ax) + abs(y - ay)
+                if corner is None or dist < corner[0]:
+                    corner = (dist, (x, y), d)
+check("test setup: map has a corner to test", corner is not None)
+if corner:
+    _, spot, d = corner
+    reached = walk_a_to(spot)
+    check(f"test setup: A walked to corner spot {spot}", reached, (ax, ay))
+    if reached:
+        before = (ax, ay)
+        moved = step_a(d, diag_s + 0.1)
+        check(f"no cutting corners: {d} from {before} blocked by the map", not moved, (ax, ay))
 
 a.close()
 time.sleep(0.15)

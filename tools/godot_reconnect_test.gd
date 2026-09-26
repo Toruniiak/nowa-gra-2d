@@ -4,7 +4,7 @@ extends SceneTree
 ## client starts against a dead port, the connection fails, the harness
 ## types the real address into the UI and presses reconnect, and the
 ## auto-login flow must then reach the world. Usage (from repo root):
-##   godot4 --headless --path client --script ../tools/godot_reconnect_test.gd -- \
+##   godot4 --headless --path client --script "$PWD"/tools/godot_reconnect_test.gd -- \
 ##     --server-port=1 --tls-cert=<abs path> --user=U --password=P --character=C \
 ##     --real-address=127.0.0.1:7800
 

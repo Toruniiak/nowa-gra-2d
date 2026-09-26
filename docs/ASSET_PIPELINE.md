@@ -26,7 +26,7 @@
 
 1. **Sprite'y postaci:** warstwowy system (baza postaci + nakładki
    broń/pancerz/hełm/buty/tarcza), sprite sheet per animacja (idle, walk,
-   atak, obrażenia, śmierć) — **4 kierunki, siatka 32×32, rzut skośny jak w Tibii** (GAME_DESIGN.md). Rozdzielczość i format do ustalenia
+   atak, obrażenia, śmierć) — **4 kierunki sprite'a (ruch jest 8-kierunkowy, skos pokazuje bok), siatka 32×32, rzut skośny jak w Tibii** (GAME_DESIGN.md). Rozdzielczość i format do ustalenia
    przy Phase 6 na podstawie rzeczywistych testów wydajności na Androidzie.
 2. **Potwory:** własny sprite + animacje (idle/ruch/atak/obrażenia/śmierć)
    per typ, nie reused/przeskalowany jeden model.

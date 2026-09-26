@@ -175,3 +175,21 @@
   psują się po checkoutcie na innym systemie).
 - Znalezione przy teście: nieaktualny pidfile mógł ubić niezwiązany proces
   o tym samym PID — odpalacz sprawdza teraz, że PID to nasz serwer.
+
+## 2026-09-26 (9)
+
+- **Ruch w 8 kierunkach** (prośba użytkownika). Serwer: `Dir` z NE/SE/SW/NW,
+  krok po skosie 354 ms (250·√2 — skos nie jest skrótem), zakaz ścinania
+  rogów o ściany/drzewa/wodę (`World::canStep`), inna postać obok skosu nie
+  blokuje. Protokół: `STEP`/`POS` z dwuliterowymi kierunkami, `WELCOME` z
+  czasem kroku po skosie, `STEP` z dodatkowym tokenem odrzucany. Klient:
+  wejście przyciągane do najbliższego z 8 sektorów po 45° (dwa klawisze =
+  skos), dłuższa animacja kroku po skosie, sprite boczny przy skosie.
+- Testy: `tools/test_client.py` — nowe asercje (czas skosu, skos w obie
+  strony, zakaz ścinania rogu w miejscu wyznaczonym z mapy, złe tokeny);
+  `tools/godot_walk_test.gd --diagonal` (prawdziwy klient: 4 kroki NE w
+  1,2 s). Regresja: chód prosto, reconnect — przechodzą.
+- `graj.bat`: przy "Repository not found" instrukcja wyczyszczenia starych
+  danych logowania GitHuba w Menedżerze poświadczeń Windows.
+- Poprawione instrukcje w nagłówkach harnessów Godota (`--script` musi
+  dostać ścieżkę bezwzględną, `../tools/…` nie działało).

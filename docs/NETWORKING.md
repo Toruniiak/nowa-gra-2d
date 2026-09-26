@@ -31,7 +31,7 @@ odpowiedzi**, nie powoduje błędu. Zmiana postaci = nowe połączenie.
 | `CHAR_LIST` | zalogowany | |
 | `CHAR_CREATE <nazwa>` | zalogowany | 3-20 znaków, litery/cyfry/spacje (nie na brzegach); nazwy globalnie unikalne |
 | `CHAR_SELECT <id>` | zalogowany | serwer sprawdza, że postać należy do konta |
-| `STEP <N\|E\|S\|W>` | w świecie | intencja kroku o 1 kafel. Serwer trzyma **najwyżej jeden** oczekujący krok (kolejne go zastępują) i wykonuje go, gdy minie czas poprzedniego kroku, cel jest przechodni wg mapy i nie stoi na nim inna postać. Wejście w przeszkodę tylko obraca postać. |
+| `STEP <N\|E\|S\|W\|NE\|SE\|SW\|NW>` | w świecie | intencja kroku o 1 kafel (8 kierunków; dokładnie jeden token — `STEP N E` jest ignorowany). Serwer trzyma **najwyżej jeden** oczekujący krok (kolejne go zastępują) i wykonuje go, gdy minie czas poprzedniego kroku, cel jest przechodni wg mapy i nie stoi na nim inna postać. Wejście w przeszkodę tylko obraca postać. |
 
 ## Komendy serwer → klient
 
@@ -42,8 +42,8 @@ odpowiedzi**, nie powoduje błędu. Zmiana postaci = nowe połączenie.
 | `CHARS <id>:<nazwa> ...` | lista postaci konta (pusta = samo `CHARS`). Nazwy mogą mieć spacje, ale nigdy `:` — klient skleja tokeny bez prefiksu `<id>:` z poprzednią nazwą. |
 | `CHAR_CREATED <id> <nazwa>` / `CHAR_CREATE_FAIL <powód>` | `invalid_name`, `name_taken` |
 | `CHAR_SELECT_FAIL <powód>` | `invalid_id`, `not_found` (to samo dla "nie istnieje" i "cudza postać") |
-| `WELCOME <entity_id> <step_ms>` | wejście do świata + czas jednego kroku (dziś 250 ms, klient animuje krok w tym czasie); zaraz po nim snapshot `POS` wszystkich obecnych encji |
-| `POS <entity_id> <x> <y> <N\|E\|S\|W>` | kafel (liczby całkowite) i kierunek, w który patrzy postać; wysyłane, gdy się zmieniły |
+| `WELCOME <entity_id> <step_ms> <diagonal_step_ms>` | wejście do świata + czas kroku prostego (dziś 250 ms) i po skosie (354 ms = 250·√2); klient animuje krok w tym czasie; zaraz po nim snapshot `POS` wszystkich obecnych encji |
+| `POS <entity_id> <x> <y> <kierunek>` (jeden z 8 jak w `STEP`) | kafel (liczby całkowite) i kierunek, w który patrzy postać; wysyłane, gdy się zmieniły |
 | `LEAVE <entity_id>` | encja opuściła świat |
 
 `POS`/`LEAVE` trafiają **wyłącznie do połączeń w świecie** — nie do
@@ -72,8 +72,12 @@ Pozycje są całkowitymi współrzędnymi kafli mapy (`client/data/maps/start.js
 40×30). Serwer wczytuje tę samą mapę co klient i sam decyduje o
 przechodniości. Nowa postać (i każda zapisana pozycja, która stała się
 nieprawidłowa) trafia na najbliższy wolny kafel od punktu startowego mapy.
-Jedna postać na kafel. Brak ruchu po skosie (4 kierunki, jak klawiatura w
-Tibii) — do rozważenia później.
+Jedna postać na kafel. **8 kierunków** (decyzja użytkownika). Reguły skosu:
+krok po skosie trwa √2 dłużej (354 ms) — skos nie jest skrótem; **nie
+można ścinać rogów**: oba kafle obok skosu muszą być przechodnie wg mapy
+(ściana, drzewo, woda blokują), ale stojąca tam inna postać nie blokuje
+(można obejść gracza po skosie). Obie reguły liczy serwer
+(`World::canStep`).
 
 ## Reconnect — zakres
 

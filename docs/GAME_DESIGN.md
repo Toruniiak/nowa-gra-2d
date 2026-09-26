@@ -35,7 +35,10 @@ Konsekwencje techniczne (do realizacji w Phase 5):
   kaflami (serwer podaje kafel docelowy, klient animuje przejście);
   sortowanie rysowania Tibia-style (wiersz po wierszu, obiekty wyższe niż
   32 px rysowane z przesunięciem w górę-lewo).
-- **Grafika:** 4 kierunki postaci (N/E/S/W) jak w Tibii.
+- **Ruch: 8 kierunków** (decyzja użytkownika, 2026-09-26) — skos wolniejszy
+  o √2, bez ścinania rogów (NETWORKING.md).
+- **Grafika:** 4 kierunki postaci (N/E/S/W) jak w Tibii; przy ruchu po skosie
+  postać patrzy w bok (NE/SE → wschód, NW/SW → zachód), jak w Tibii.
 - **Nie wolno** używać grafik z Tibii (własność CipSoft) — tylko oryginalne
   lub darmowe na licencji pozwalającej na użycie komercyjne (ASSET_PIPELINE.md).
 

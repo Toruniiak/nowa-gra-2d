@@ -70,7 +70,11 @@ związanego zadania; naprawiać w fazie, do której należą (patrz ROADMAP.md).
   palety.
 - Jedna mapa (`start.json`), brak pięter (z) i przejść między mapami —
   "system modułowy map" z ROADMAP (Phase 5) jeszcze nie istnieje.
-- Brak ruchu po skosie.
+- Ruch po skosie pokazuje sprite boczny (arkusz ma 4 kierunki). Osobne
+  klatki skosu — jeśli grafik uzna, że są potrzebne.
+- Na telefonie nie ma jeszcze wirtualnego joysticka — 8 kierunków działa z
+  klawiatury (dwa klawisze naraz) i z gałki pada; przyciski dotykowe to
+  osobne zadanie UI.
 - Tryb ekranu to portret (720×1280) — przy widoku 15 kafli wszerz widać ~26
   w pionie. Czy gra ma być w poziomie (jak Tibia na PC) — do decyzji.
 

@@ -21,6 +21,7 @@ const MAP_PATH := "res://data/maps/start.json"
 var _entities: Dictionary = {}
 var _local_id := -1
 var _step_duration := 0.25
+var _diagonal_step_duration := 0.354
 var _next_step_at := 0.0
 
 @onready var _net := $NetClient
@@ -99,7 +100,9 @@ func _on_reconnect_requested(host: String, port: int) -> void:
 func _on_entered_world(local_entity_id: int, step_duration: float) -> void:
 	_local_id = local_entity_id
 	_step_duration = step_duration
-	print("Entered world as entity %d (step %d ms)" % [local_entity_id, int(step_duration * 1000)])
+	_diagonal_step_duration = _net.diagonal_step_duration
+	print("Entered world as entity %d (step %d ms, diagonal %d ms)" % [
+		local_entity_id, int(step_duration * 1000), int(_diagonal_step_duration * 1000)])
 
 
 func _on_connection_failed(_reason: String) -> void:
@@ -115,6 +118,7 @@ func _on_position_updated(entity_id: int, tile: Vector2i, facing: String) -> voi
 		node = PLAYER_ENTITY_SCENE.instantiate()
 		node.is_local = (entity_id == _local_id)
 		node.step_duration = _step_duration
+		node.diagonal_step_duration = _diagonal_step_duration
 		_map.sorted_layer().add_child(node)
 		_entities[entity_id] = node
 		if node.is_local:
@@ -144,16 +148,21 @@ func _process(_delta: float) -> void:
 	var now := Time.get_ticks_msec() / 1000.0
 	if now < _next_step_at:
 		return
-	_next_step_at = now + _step_duration * 0.8
+	_next_step_at = now + (_diagonal_step_duration if dir.length() == 2 else _step_duration) * 0.8
 	_net.send_step(dir)
 
 
+## Directions by 45-degree sector, starting at +x (east) and turning towards
+## +y (screen down = south).
+const DIRS_8: Array[String] = ["E", "SE", "S", "SW", "W", "NW", "N", "NE"]
+
+
 ## Keyboard, gamepad and (later) on-screen joystick all feed the same
-## ui_* actions; the dominant axis wins — movement is 4-directional.
+## ui_* actions. 8 directions: the stick/keys vector is snapped to the
+## nearest 45-degree sector (two keys at once = diagonal).
 func _input_direction() -> String:
 	var v := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
 	if v.length() < 0.3:
 		return ""
-	if absf(v.x) > absf(v.y):
-		return "E" if v.x > 0 else "W"
-	return "S" if v.y > 0 else "N"
+	var sector := wrapi(roundi(v.angle() / (PI / 4.0)), 0, 8)
+	return DIRS_8[sector]

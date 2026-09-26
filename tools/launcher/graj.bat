@@ -44,6 +44,13 @@ if exist "%GAME_DIR%\.git" (
   git clone "%REPO_URL%" "%GAME_DIR%"
   if errorlevel 1 (
     echo BLAD: nie udalo sie pobrac gry z GitHuba.
+    echo.
+    echo "Repository not found" przy prywatnym repo znaczy zwykle, ze Windows
+    echo pamieta logowanie do GitHuba na INNE konto albo stare, niewazne haslo.
+    echo Napraw to tak:
+    echo   1. Menu Start - wpisz "Menedzer poswiadczen" - Poswiadczenia systemu Windows.
+    echo   2. Usun wpisy zaczynajace sie od "git:https://github.com".
+    echo   3. Uruchom graj.bat ponownie i zaloguj sie kontem Toruniiak w oknie przegladarki.
     goto :fail
   )
 )

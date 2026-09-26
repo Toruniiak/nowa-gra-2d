@@ -24,6 +24,9 @@ var _tcp := StreamPeerTCP.new()
 var _tls := StreamPeerTLS.new()
 var _state := State.DISCONNECTED
 var _local_entity_id := -1
+## From WELCOME, valid once entered_world fired. A diagonal step takes longer
+## (it covers sqrt(2) tiles); the server decides both values.
+var diagonal_step_duration := 0.354
 var _inbuf := PackedByteArray()
 var _host := ""
 var _tls_common_name := ""
@@ -151,7 +154,7 @@ func send_character_select(character_id: int) -> void:
 	_send("CHAR_SELECT %d" % character_id)
 
 
-## dir: "N", "E", "S" or "W". Only an intent — the server decides if, when
+## dir: "N", "E", "S", "W", "NE", "SE", "SW" or "NW". Only an intent — the server decides if, when
 ## and where the character moves (walls, other players, step duration).
 func send_step(dir: String) -> void:
 	if _local_entity_id == -1:
@@ -191,6 +194,8 @@ func _handle_line(line: String) -> void:
 		"WELCOME":
 			_local_entity_id = int(parts[1])
 			var step_ms := int(parts[2]) if parts.size() > 2 else 250
+			var diag_ms := int(parts[3]) if parts.size() > 3 else roundi(step_ms * sqrt(2.0))
+			diagonal_step_duration = diag_ms / 1000.0
 			entered_world.emit(_local_entity_id, step_ms / 1000.0)
 		"POS":
 			if parts.size() >= 5:
