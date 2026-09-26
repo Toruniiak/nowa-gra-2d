@@ -1,0 +1,23 @@
+; Engine configuration file.
+; See docs/TECH_STACK.md for why Godot 4.3 was chosen for the client.
+
+config_version=5
+
+[application]
+
+config/name="nowa-gra-2d"
+run/main_scene="res://scenes/World.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+
+[display]
+
+window/size/viewport_width=720
+window/size/viewport_height=1280
+window/handheld/orientation="portrait"
+window/stretch/mode="canvas_items"

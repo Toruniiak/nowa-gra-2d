@@ -1,0 +1,36 @@
+# build output
+build/
+out/
+cmake-build-*/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# logs / secrets
+*.log
+.env
+.env.*
+
+# Godot client
+client/.godot/
+client/export_presets.cfg
+client/*.apk
+client/*.aab
+client/android/build/
+
+# Android SDK/NDK if ever installed inside the repo tree by mistake
+*.keystore
+

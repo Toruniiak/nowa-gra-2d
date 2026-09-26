@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Placeholder project icon — replace before any public build. See docs/ASSET_PIPELINE.md -->
+  <rect width="128" height="128" fill="#2b2140"/>
+  <text x="64" y="76" font-size="48" text-anchor="middle" fill="#e6c07a" font-family="sans-serif">N</text>
+</svg>
