@@ -130,3 +130,14 @@
   Diablo 2) — zapisane w GAME_DESIGN.md, realizacja w Phase 5.
 - **Nieukończone:** żadna część nie była testowana na telefonie ani przez
   człowieka; znane ograniczenia w KNOWN_ISSUES.md.
+
+## 2026-09-26 (6)
+
+- **Decyzja użytkownika (ostateczna):** styl i mechanika klasycznej Tibii —
+  siatka 32×32, rzut skośny, ruch po kratkach. Zastępuje wpis (5) o
+  izometrii w stylu Diablo 2. Zaktualizowano GAME_DESIGN.md, PROJECT_STATE.md,
+  ASSET_PIPELINE.md, README.md. Ruch po kratkach oznacza zmianę serwera i
+  protokołu w Phase 5 (pozycje na kaflach, serwer zna mapę).
+- Przeanalizowano darmowe źródła grafik (Pipoya, Summer Engine, LPC,
+  kolekcje itch.io) pod kątem stylu i licencji — wybór czeka na decyzję
+  użytkownika, żadne zasoby nie zostały jeszcze dodane do repo.

@@ -13,12 +13,11 @@ milestone.
 
 1. **Sprite'y postaci:** warstwowy system (baza postaci + nakładki
    broń/pancerz/hełm/buty/tarcza), sprite sheet per animacja (idle, walk,
-   atak, obrażenia, śmierć) — **w rzucie izometrycznym, prawdopodobnie 8
-   kierunków** (decyzja o kamerze: GAME_DESIGN.md, "Kamera i perspektywa"). Rozdzielczość i format do ustalenia
+   atak, obrażenia, śmierć) — **4 kierunki, siatka 32×32, rzut skośny jak w Tibii** (GAME_DESIGN.md). Rozdzielczość i format do ustalenia
    przy Phase 6 na podstawie rzeczywistych testów wydajności na Androidzie.
 2. **Potwory:** własny sprite + animacje (idle/ruch/atak/obrażenia/śmierć)
    per typ, nie reused/przeskalowany jeden model.
-3. **Tileset świata:** izometryczne kafle 2:1 + dekoracje (drzewa, kamienie, woda,
+3. **Tileset świata:** kafle 32×32 (rzut skośny) + dekoracje (drzewa, kamienie, woda,
    budynki) zaprojektowany tak, by unikać widocznej powtarzalności — patrz
    GAME_DESIGN.md.
 4. **UI:** ikony akcji, ramki, HUD — jako `Control`-based UI w Godocie.

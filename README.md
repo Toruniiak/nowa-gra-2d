@@ -1,7 +1,7 @@
 # nowa-gra-2d
 
-2D MMORPG PvP na Androida, open world, widok izometryczny (pochylona kamera
-w stylu Diablo 2), inspirowane klasycznymi MMORPG (w szczególności Tibią) — **własny kod, własne assety, własna nazwa i tożsamość
+2D MMORPG PvP na Androida, open world, styl i mechanika klasycznej Tibii
+(siatka 32×32, rzut skośny, ruch po kratkach), inspirowane klasycznymi MMORPG (w szczególności Tibią) — **własny kod, własne assety, własna nazwa i tożsamość
 wizualna, docelowo**. Zero powiązań z projektem Azonera (inne repo, inny
 serwer, inny klient).
 

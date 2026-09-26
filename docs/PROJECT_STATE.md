@@ -55,10 +55,10 @@ Czytaj go pierwszy.
 
 ## Decyzja projektowa od użytkownika: kamera
 
-Gra 2D z **pochyloną kamerą, widok izometryczny w stylu Diablo 2** —
-szczegóły i konsekwencje: GAME_DESIGN.md, "Kamera i perspektywa". Serwer
-się nie zmienia (świat pozostaje płaską siatką x, y), zmienia się
-rysowanie i sterowanie po stronie klienta — do realizacji w Phase 5.
+**Styl i mechanika klasycznej Tibii** (siatka 32×32, rzut skośny, ruch po
+kratkach) — ostateczna decyzja użytkownika, zastąpiła wcześniejszą notatkę o
+izometrii. Wymaga zmian także na serwerze (pozycje na kaflach, serwer zna
+mapę) — szczegóły: GAME_DESIGN.md, "Kamera, perspektywa i ruch".
 
 ## Środowisko (efemeryczne — kontener)
 
@@ -86,9 +86,9 @@ Sieć: `dl.google.com`, GitHub Releases, Maven/Gradle dostępne
 1. **Użytkownik:** zainstalować APK na telefonie, uruchomić serwer na PC
    (BUILD.md), wpisać adres PC na ekranie logowania, założyć konto i
    postać, poruszać się. Zgłosić, co nie działa / co jest niewygodne.
-2. **Phase 5 — First World** w widoku izometrycznym: kamera podążająca za
-   graczem, izometryczna mapa (`TileMapLayer`), obrót wektora sterowania,
-   sortowanie głębokości. Przed startem ustalić z użytkownikiem otwarte
+2. **Phase 5 — First World** w stylu Tibii: ruch po kratkach (serwer +
+   protokół), mapa jako dane wspólne serwera i klienta, kamera za graczem,
+   pierwszy zestaw grafik (wybór źródeł: ASSET_PIPELINE.md). Przed startem ustalić z użytkownikiem otwarte
    punkty z GAME_DESIGN.md (rozmiar kafla, 8 vs 4 kierunki, styl grafiki).
 3. Przed jakimkolwiek publicznym serwerem: KNOWN_ISSUES.md — scrypt w
    wątku roboczym, limit `MOVE`, prawdziwy certyfikat, backupy bazy.
