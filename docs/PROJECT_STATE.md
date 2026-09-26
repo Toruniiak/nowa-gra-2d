@@ -38,12 +38,21 @@ Czytaj go pierwszy.
 
 ## Bloker aktywny
 
-**Sieć:** `dl.google.com` (i Google Maven) były zablokowane przez politykę
-sieciową tego środowiska w momencie audytu — Gradle/Android Gradle Plugin
-tego potrzebuje. Użytkownik zadeklarował, że zmieni ustawienia środowiska
-(menu sesji → Edit → Network access → dodać `dl.google.com`). **Do
-sprawdzenia na początku następnej sesji**, jeśli nie zostało potwierdzone w
-tej.
+**Sieć:** `dl.google.com` (i Google Maven) wciąż zablokowane przez politykę
+sieciową środowiska — zweryfikowane realnym `curl` w tej sesji
+(2026-09-26, środowisko "AZONERA MMORPG 2D"): `CONNECT tunnel failed,
+response 403`, proxy log: `connect_rejected — gateway answered 403 to
+CONNECT (organization policy)`. To ta sama blokada co w poprzedniej
+sesji ("Default") — zmiana środowiska sama nie zmieniła polityki sieci.
+Gradle/Android Gradle Plugin tego potrzebuje do instalacji Android
+SDK/NDK.
+
+**Nie próbowano** żadnego obejścia (zmiana User-Agent, inny URL/mirror,
+itp.) — to blokada na poziomie polityki proxy, nie coś do obejścia z
+bash. Użytkownik musi zmienić to w ustawieniach: menu środowiska (górna
+belka sesji) → Edit → Network access → szerszy poziom dostępu albo dodać
+`dl.google.com` do dozwolonych domen. **Do sprawdzenia ponownie na
+początku następnej sesji.**
 
 ## Repozytorium GitHub
 

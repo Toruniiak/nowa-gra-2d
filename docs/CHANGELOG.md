@@ -30,3 +30,15 @@
 - Nieukończone: przypisanie przycisków akcji pada (nie istnieje jeszcze
   system akcji), test na fizycznym padzie Bluetooth (wymaga urządzenia
   użytkownika).
+
+## 2026-09-26 (3)
+
+- Ponowny audyt sieci w środowisku "AZONERA MMORPG 2D" (nowa sesja):
+  zweryfikowano realnym `curl` (nie deklaracją), że `dl.google.com` wciąż
+  zwraca `403` na `CONNECT` przez proxy środowiska — ta sama blokada co
+  w poprzedniej sesji, mimo zmiany środowiska. Nie podjęto żadnej próby
+  obejścia (zgodnie z zasadą projektu — blokada polityki proxy nie jest
+  czymś do obchodzenia z bash).
+- Faza 2 (Android Client) pozostaje zablokowana. Nie zainstalowano
+  Android SDK, nie skonfigurowano eksportu, nie zbudowano `.apk`.
+  Nieukończone.
